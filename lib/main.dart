@@ -1,11 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+
+import 'lib.dart';
 
 final logger = Logger('global');
 
@@ -48,42 +47,57 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-              child: Text(
-                'Drawer Header',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.message),
-              title: Text('Messages'),
-            ),
-            ListTile(
-              leading: Icon(Icons.account_circle),
-              title: Text('Profile'),
-            ),
-            ListTile(
-              leading: Icon(Icons.settings),
-              title: Text('Settings'),
-            ),
-          ],
+      drawer: SideBar(),
+      body: Center(
+        child: Consumer<DataController>(
+          builder: (context, dataController, child) => ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemBuilder: ((context, index) {
+              return NewShiftCard();
+            }),
+          ),
         ),
       ),
-      body: Center(
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [NewShiftCard()],
-        ),
+    );
+  }
+}
+
+class SideBar extends StatelessWidget {
+  const SideBar({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: <Widget>[
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+            child: Text(
+              'Drawer Header',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.message),
+            title: Text('Messages'),
+          ),
+          ListTile(
+            leading: Icon(Icons.account_circle),
+            title: Text('Profile'),
+          ),
+          ListTile(
+            leading: Icon(Icons.settings),
+            title: Text('Settings'),
+          ),
+        ],
       ),
     );
   }
@@ -203,35 +217,15 @@ class EditPage extends StatelessWidget {
           title: Consumer<DataController>(
         builder: (context, dataController, child) => TextField(
           decoration: InputDecoration(
-              hintText: dataController.get('title', id: shiftId)),
+            hintText: dataController.getShift(shiftId).title,
+          ),
           onChanged: (value) {
-            dataController.set('title', value, id: shiftId).flush();
+            dataController.getShift(shiftId).title = value;
+            dataController.notify().flush();
           },
         ),
       )),
     );
-  }
-}
-
-class IOController {
-  Future<File> get dataFile async {
-    // /data/user/0/com.example.shift/app_flutter
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/shift_data.json');
-    if (!file.existsSync()) {
-      file.create(recursive: true);
-    }
-    return file;
-  }
-
-  Future<File> write(String data) async {
-    final file = await dataFile;
-    return file.writeAsString(data);
-  }
-
-  Future<String> read() async {
-    final file = await dataFile;
-    return file.readAsString();
   }
 }
 
@@ -242,14 +236,12 @@ class DataController extends ChangeNotifier {
     init();
   }
 
-  Map<String, Map<String, String>> data = {
-    'default': {'title': 'Untitled'}
-  };
+  Data data = Data.fromDefault();
 
   void init() {
     ioController.read().then((value) {
       try {
-        data = jsonDecode(value);
+        data.update(jsonDecode(value));
         notifyListeners();
       } catch (error) {
         logger.severe(error);
@@ -257,13 +249,49 @@ class DataController extends ChangeNotifier {
     });
   }
 
-  dynamic get(String key, {required String id}) {
-    return data[id]?[key] ?? data['default']?[key];
+  T get<T>(String id) {
+    switch (T) {
+      case Shift:
+        return getShift(id) as T;
+      case Member:
+        return getMember(id) as T;
+      case Work:
+        return getWork(id) as T;
+      case Vacancy:
+        return getVacancy(id) as T;
+    }
+    throw TypeError();
   }
 
-  DataController set(String key, var value, {required String id}) {
-    data[id] ??= {};
-    data[id]?[key] = value;
+  Shift getShift(String id) {
+    if (data.shifts[id] == null) {
+      data.shifts[id] = Shift.fromDefault(id: id);
+    }
+    return data.shifts[id]!;
+  }
+
+  Member getMember(String id) {
+    if (data.members[id] == null) {
+      data.members[id] = Member.fromDefault(id: id);
+    }
+    return data.members[id]!;
+  }
+
+  Work getWork(String id) {
+    if (data.works[id] == null) {
+      data.works[id] = Work.fromDefault(id: id);
+    }
+    return data.works[id]!;
+  }
+
+  Vacancy getVacancy(String id) {
+    if (data.vacancies[id] == null) {
+      data.vacancies[id] = Vacancy.fromDefault(id: id);
+    }
+    return data.vacancies[id]!;
+  }
+
+  DataController notify() {
     notifyListeners();
     return this;
   }
@@ -271,101 +299,4 @@ class DataController extends ChangeNotifier {
   void flush() {
     ioController.write(jsonEncode(data));
   }
-}
-
-// weight of fatigue just after the work finished
-double initialWeight = 2;
-// the attenuation time of fatigue in minutes
-double tau = 60;
-
-class Member {
-  final String id;
-  String name;
-  double preload = 0;
-  List<Vacancy> vacancies = [];
-
-  double previousToTalLoad = 0;
-  double previousLoad = 0;
-  DateTime previousLoadEndDateTime = DateTime(1970);
-
-  Member(
-      {required this.id,
-      required this.name,
-      required this.vacancies,
-      this.preload = 0});
-
-  bool isAvailable(DateTime dateTime) {
-    for (final vacancy in vacancies) {
-      if (vacancy.include(dateTime)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  double getLoad(Duration duration) {
-    return previousToTalLoad + previousLoad * weight(duration.inMinutes);
-  }
-
-  double weight(int t) {
-    if (t >= 3600) return 1;
-
-    return max(
-        1,
-        initialWeight -
-            (1 - 1 / e) *
-                characteristicFuction(t) /
-                characteristicFuction(tau) *
-                (initialWeight - 1));
-  }
-
-  double characteristicFuction(num t) {
-    return exp(t) - 1;
-  }
-}
-
-class Vacancy {
-  DateTime startDateTime;
-  DateTime endDateTime;
-  String description;
-
-  Vacancy(
-      {required this.startDateTime,
-      required this.endDateTime,
-      this.description = ""});
-
-  Duration get duration {
-    return endDateTime.difference(startDateTime);
-  }
-
-  bool include(DateTime dateTime) {
-    return (startDateTime.isBefore(dateTime) ||
-            startDateTime.isAtSameMomentAs(dateTime)) &&
-        (endDateTime.isAfter(dateTime) ||
-            endDateTime.isAtSameMomentAs(dateTime));
-  }
-}
-
-class Shift {
-  final String id;
-  String title;
-  List<Member> members = [];
-  List<Work> works = [];
-
-  Shift({required this.id, this.title = "Untitled"});
-}
-
-class Work {
-  final String id;
-  double load;
-  List<Member> fixedMembers = [];
-  List<Member> members = [];
-
-  Work({required this.id, required this.load, required this.fixedMembers});
-}
-
-String genId() {
-  final id = DateTime.now().millisecondsSinceEpoch.toString();
-  logger.info('New ID generated: $id');
-  return id;
 }
