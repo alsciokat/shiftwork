@@ -38,6 +38,7 @@ dependencies:
   path_provider: ^2.0.15
   provider: ^6.0.5
   logging: ^1.2.0
+  intl: ^0.18.1
 
 dev_dependencies:
   flutter_test:

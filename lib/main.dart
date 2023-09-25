@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 import 'lib.dart';
 
@@ -252,7 +253,7 @@ class ShiftCard extends StatelessWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.chevron_right),
-                  title: Text("Works"),
+                  title: const Text("Works"),
                   subtitle: Consumer<DataController>(
                       builder: (context, dataController, child) => Text(() {
                             final String str = dataController
@@ -291,21 +292,32 @@ class _EditPageState extends State<EditPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Consumer<DataController>(
-        builder: (context, dataController, child) => TextField(
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(borderSide: BorderSide.none),
-            hintText: dataController.data.shiftData.defaultObject.name,
+        title: Consumer<DataController>(
+          builder: (context, dataController, child) => TextField(
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(borderSide: BorderSide.none),
+              hintText: dataController.data.shiftData.defaultObject.name,
+            ),
+            controller: TextEditingController(
+                text: dataController.getShift(widget.shiftId).name),
+            style: Theme.of(context).textTheme.titleLarge,
+            onSubmitted: (value) {
+              dataController.getShift(widget.shiftId).name = value;
+              dataController.notify().flush();
+            },
           ),
-          controller: TextEditingController(
-              text: dataController.getShift(widget.shiftId).name),
-          style: Theme.of(context).textTheme.titleLarge,
-          onSubmitted: (value) {
-            dataController.getShift(widget.shiftId).name = value;
-            dataController.notify().flush();
-          },
         ),
-      )),
+        //   actions: [
+        //     TextButton(
+        //         onPressed: () {
+        //           Provider.of<DataController>(context, listen: false)
+        //               .generateShift(widget.shiftId);
+        //           Navigator.of(context).push(MaterialPageRoute(
+        //               builder: (context) => ShowPage(widget.shiftId)));
+        //         },
+        //         child: const Text('Create'))
+        //   ],
+      ),
       body: <Widget>[
         Consumer<DataController>(
           builder: (context, dataController, child) => ListView.builder(
@@ -319,22 +331,17 @@ class _EditPageState extends State<EditPage> {
             }),
           ),
         ),
-        Container(
-          color: Theme.of(context).colorScheme.secondary,
-          child: Center(child: Text('Under Construction')),
+        Consumer<DataController>(
+          builder: (context, dataController, child) => ListView.builder(
+            itemCount: dataController.getShift(widget.shiftId).workIds.length,
+            itemBuilder: ((context, index) {
+              return WorkListItem(
+                  shiftId: widget.shiftId,
+                  work: dataController.getWork(
+                      dataController.getShift(widget.shiftId).workIds[index]));
+            }),
+          ),
         ),
-        // Consumer<DataController>(
-        //   builder: (context, dataController, child) => ListView.builder(
-        //     itemCount: dataController.getShift(widget.shiftId).workIds.length,
-        //     itemBuilder: ((context, index) {
-        //       return WorkListItem(
-        //           shiftId: widget.shiftId,
-        //           work: dataController.getWork(dataController
-        //               .getShift(widget.shiftId)
-        //               .workIds[index]));
-        //     }),
-        //   ),
-        // ),
         Container(
           color: Theme.of(context).colorScheme.secondary,
           child: Center(child: Text('Under Construction')),
@@ -349,6 +356,11 @@ class _EditPageState extends State<EditPage> {
             Navigator.of(context).push<String>(MaterialPageRoute(
               builder: (context) =>
                   EditMemberPage(shiftId: widget.shiftId, memberId: genId()),
+            ));
+          } else if (currentPageIndex == 1) {
+            Navigator.of(context).push<String>(MaterialPageRoute(
+              builder: (context) =>
+                  EditWorkPage(shiftId: widget.shiftId, workId: genId()),
             ));
           }
         },
@@ -413,6 +425,7 @@ class _EditMemberPageState extends State<EditMemberPage> {
               child: const Text('Save'),
               onPressed: () {
                 if (formKey.currentState!.validate()) {
+                  formKey.currentState!.save();
                   dataController.saveTemp();
                   if (!dataController
                       .getShift(widget.shiftId)
@@ -437,9 +450,11 @@ class _EditMemberPageState extends State<EditMemberPage> {
                   decoration: const InputDecoration(helperText: 'Name'),
                   initialValue: dataController.getMember(widget.memberId).name,
                   validator: (value) {
+                    return null;
+                  },
+                  onSaved: (value) {
                     dataController.getMember(widget.memberId).name =
                         value ?? '';
-                    return null;
                   },
                 ),
               ),
@@ -450,9 +465,11 @@ class _EditMemberPageState extends State<EditMemberPage> {
                   initialValue:
                       dataController.getMember(widget.memberId).description,
                   validator: (value) {
+                    return null;
+                  },
+                  onSaved: (value) {
                     dataController.getMember(widget.memberId).description =
                         value ?? '';
-                    return null;
                   },
                 ),
               ),
@@ -462,6 +479,163 @@ class _EditMemberPageState extends State<EditMemberPage> {
       ),
     );
   }
+}
+
+class EditWorkPage extends StatefulWidget {
+  final String workId;
+  final String shiftId;
+
+  const EditWorkPage({required this.shiftId, required this.workId, super.key});
+
+  @override
+  State<EditWorkPage> createState() => _EditWorkPageState();
+}
+
+class _EditWorkPageState extends State<EditWorkPage> {
+  final formKey = GlobalKey<FormState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: formKey,
+      child: Scaffold(
+        appBar: AppBar(actions: [
+          Consumer<DataController>(
+            builder: (context, dataController, child) => TextButton(
+              child: const Text('Save'),
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  formKey.currentState!.save();
+                  dataController.saveTemp();
+                  if (!dataController
+                      .getShift(widget.shiftId)
+                      .workIds
+                      .contains(widget.workId)) {
+                    dataController.addWork(widget.shiftId, widget.workId);
+                  }
+                  dataController.notify().flush();
+                  Navigator.of(context).pop(widget.workId);
+                }
+              },
+            ),
+          )
+        ]),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Consumer<DataController>(
+            builder: (context, dataController, child) => Column(children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextFormField(
+                  decoration: const InputDecoration(helperText: 'Name'),
+                  initialValue: dataController.getWork(widget.workId).name,
+                  validator: (value) {
+                    return null;
+                  },
+                  onSaved: (value) {
+                    dataController.getWork(widget.workId).name = value ?? '';
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextFormField(
+                  decoration: const InputDecoration(helperText: 'Description'),
+                  initialValue:
+                      dataController.getWork(widget.workId).description,
+                  validator: (value) {
+                    return null;
+                  },
+                  onSaved: (value) {
+                    dataController.getWork(widget.workId).description =
+                        value ?? '';
+                  },
+                ),
+              ),
+              Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: DateFormField(
+                      work: dataController.getWork(widget.workId),
+                      start: true,
+                      initialValue:
+                          dataController.getWork(widget.workId).startDateTime)),
+              Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: DateFormField(
+                      work: dataController.getWork(widget.workId),
+                      start: false,
+                      initialValue:
+                          dataController.getWork(widget.workId).endDateTime)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+DateFormat dateFormat = DateFormat('yyyy-MM-dd');
+DateFormat timeFormat = DateFormat('hh:mm');
+
+class DateFormField extends FormField<DateTime> {
+  final Work work;
+  final bool start;
+
+  DateFormField(
+      {required this.work,
+      required this.start,
+      required super.initialValue,
+      super.key})
+      : super(
+            onSaved: (value) {
+              if (start) {
+                work.startDateTime = value ?? work.startDateTime;
+              } else {
+                work.endDateTime = value ?? work.endDateTime;
+              }
+            },
+            builder: (FormFieldState<DateTime> state) => Row(
+                  children: [
+                    GestureDetector(
+                        onTap: () async {
+                          final DateTime? date = await showDatePicker(
+                            context: state.context,
+                            initialDate: state.value ?? initialValue!,
+                            firstDate: DateTime(DateTime.now().year - 10),
+                            lastDate: DateTime(DateTime.now().year + 10),
+                          );
+
+                          if (date != null) {
+                            state.didChange(date.copyWith(
+                                hour: state.value?.hour,
+                                minute: state.value?.minute));
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(dateFormat.format(state.value!)),
+                        )),
+                    GestureDetector(
+                        onTap: () async {
+                          final TimeOfDay? time = await showTimePicker(
+                            context: state.context,
+                            initialTime: TimeOfDay.fromDateTime(
+                                state.value ?? initialValue!),
+                          );
+
+                          if (time != null) {
+                            state.didChange(state.value!.copyWith(
+                              hour: time.hour,
+                              minute: time.minute,
+                            ));
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(timeFormat.format(state.value!)),
+                        ))
+                  ],
+                ));
 }
 
 class MemberListItem extends StatelessWidget {
@@ -516,56 +690,55 @@ class MemberListItem extends StatelessWidget {
   }
 }
 
-// class WorkListItem extends StatelessWidget {
-//   final Work work;
-//   final String shiftId;
+class WorkListItem extends StatelessWidget {
+  final Work work;
+  final String shiftId;
 
-//   const WorkListItem({required this.shiftId, required this.work, super.key});
+  const WorkListItem({required this.shiftId, required this.work, super.key});
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return ListTile(
-//       leading: const Icon(Icons.notes),
-//       title: Text(work.name),
-//       subtitle: Text(work.description),
-//       trailing: MenuAnchor(
-//           builder: (context, controller, child) => IconButton(
-//               onPressed: () {
-//                 if (controller.isOpen) {
-//                   controller.close();
-//                 } else {
-//                   controller.open(position: const Offset(-20, 45));
-//                 }
-//               },
-//               icon: const Icon(Icons.more_vert)),
-//           menuChildren: [
-//             MenuItemButton(
-//                 onPressed: () {
-//                   Provider.of<DataController>(context, listen: false)
-//                       .removeWork(shiftId, work.id)
-//                       .notify()
-//                       .flush();
-//                 },
-//                 child: const Text('Remove')),
-//             MenuItemButton(
-//                 onPressed: () {
-//                   Provider.of<DataController>(context, listen: false)
-//                       .removeWork(shiftId, work.id)
-//                       .deleteWork(work.id)
-//                       .notify()
-//                       .flush();
-//                 },
-//                 child: const Text('Delete')),
-//           ]),
-//       onTap: () {
-//         Navigator.of(context).push(MaterialPageRoute(
-//           builder: (context) =>
-//               EditWorkPage(shiftId: shiftId, workId: work.id),
-//         ));
-//       },
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.notes),
+      title: Text(work.name),
+      subtitle: Text(work.description),
+      trailing: MenuAnchor(
+          builder: (context, controller, child) => IconButton(
+              onPressed: () {
+                if (controller.isOpen) {
+                  controller.close();
+                } else {
+                  controller.open(position: const Offset(-20, 45));
+                }
+              },
+              icon: const Icon(Icons.more_vert)),
+          menuChildren: [
+            MenuItemButton(
+                onPressed: () {
+                  Provider.of<DataController>(context, listen: false)
+                      .removeWork(shiftId, work.id)
+                      .notify()
+                      .flush();
+                },
+                child: const Text('Remove')),
+            MenuItemButton(
+                onPressed: () {
+                  Provider.of<DataController>(context, listen: false)
+                      .removeWork(shiftId, work.id)
+                      .deleteWork(work.id)
+                      .notify()
+                      .flush();
+                },
+                child: const Text('Delete')),
+          ]),
+      onTap: () {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => EditWorkPage(shiftId: shiftId, workId: work.id),
+        ));
+      },
+    );
+  }
+}
 
 class DataController extends ChangeNotifier {
   final IOController ioController = IOController();
@@ -684,6 +857,22 @@ class DataController extends ChangeNotifier {
     return names;
   }
 
+  DataController addWork(String shiftId, String workId) {
+    getShift(shiftId).workIds.add(workId);
+    return this;
+  }
+
+  DataController removeWork(String shiftId, String workId) {
+    getShift(shiftId).workIds.remove(workId);
+    return this;
+  }
+
+  DataController deleteWork(String workId) {
+    data.workData.objectOrder.remove(workId);
+    data.workData.objectMap.remove(workId);
+    return this;
+  }
+
   // Vacancy getVacancy(String id) {
   //   return data.vacancyData.getById(id) as Vacancy;
   // }
@@ -703,6 +892,8 @@ class DataController extends ChangeNotifier {
     }
     return this;
   }
+
+  void generateShift(String shiftId) {}
 
   DataController notify() {
     notifyListeners();

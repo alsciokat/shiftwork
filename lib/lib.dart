@@ -339,12 +339,17 @@ class Work implements IObject {
   static List<String> fixedMemberIdsDefault = [];
   static List<String> memberIdsDefault = [];
   static String descriptionDefault = "";
+  static DateTime startDateTimeDefault = DateTime.now();
+  static DateTime endDateTimeDefault = DateTime.now();
 
   @override
   final String id;
+
   @override
   String name;
   double load;
+  DateTime startDateTime;
+  DateTime endDateTime;
   List<String> fixedMemberIds;
   List<String> memberIds;
   String description;
@@ -353,11 +358,15 @@ class Work implements IObject {
       {required this.id,
       String? name,
       double? load,
+      DateTime? startDateTime,
+      DateTime? endDateTime,
       List<String>? fixedMemberIds,
       List<String>? memberIds,
       String? description = ""})
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
+        startDateTime = startDateTime ?? startDateTimeDefault,
+        endDateTime = endDateTime ?? endDateTimeDefault,
         fixedMemberIds = fixedMemberIds ?? List.from(fixedMemberIdsDefault),
         memberIds = memberIds ?? List.from(memberIdsDefault),
         description = description ?? descriptionDefault;
@@ -367,17 +376,21 @@ class Work implements IObject {
     return Work(id: id);
   }
 
-  static setDefault(Map<String, dynamic> memberJson) {
-    nameDefault = memberJson['name'];
-    loadDefault = memberJson['load'];
-    fixedMemberIdsDefault = memberJson['fixedMemberIds'];
-    memberIdsDefault = memberJson['memberIds'];
-    descriptionDefault = memberJson['description'];
+  static setDefault(Map<String, dynamic> workJson) {
+    nameDefault = workJson['name'];
+    loadDefault = workJson['load'];
+    startDateTimeDefault = DateTime.parse(workJson['startDateTime']);
+    endDateTimeDefault = DateTime.parse(workJson['endDateTime']);
+    fixedMemberIdsDefault = workJson['fixedMemberIds'];
+    memberIdsDefault = workJson['memberIds'];
+    descriptionDefault = workJson['description'];
   }
 
   Work.fromJson(this.id, Map<String, dynamic> workJson)
       : name = workJson['name'] ?? nameDefault,
         load = workJson['load'] ?? loadDefault,
+        startDateTime = DateTime.parse(workJson['startDateTime']),
+        endDateTime = DateTime.parse(workJson['endDateTime']),
         fixedMemberIds =
             workJson['fixedMemberIds'] ?? List.from(fixedMemberIdsDefault),
         memberIds = workJson['memberIds'] ?? List.from(memberIdsDefault),
@@ -387,6 +400,8 @@ class Work implements IObject {
   Map<String, dynamic> toJson() => {
         'name': name,
         'load': load,
+        'startDateTime': startDateTime.toString(),
+        'endDateTime': endDateTime.toString(),
         'fixedMemberIds': fixedMemberIds,
         'memberIds': memberIds,
         'description': description,
@@ -442,10 +457,10 @@ class Vacancy implements IObject {
   }
 
   Vacancy.fromJson(this.id, Map<String, dynamic> vacancyJson)
-      : name = vacancyJson['name'],
+      : name = vacancyJson['name'] ?? nameDefault,
         startDateTime = DateTime.parse(vacancyJson['startDateTime']),
         endDateTime = DateTime.parse(vacancyJson['endDateTime']),
-        description = vacancyJson['description'];
+        description = vacancyJson['description'] ?? descriptionDefault;
 
   @override
   Map<String, dynamic> toJson() => {
