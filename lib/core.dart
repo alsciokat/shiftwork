@@ -13,11 +13,19 @@ enum DataType {
   group,
 }
 
+// Used for every DataType
 String genId() {
   final id = DateTime.now().millisecondsSinceEpoch.toString();
   return id;
 }
 
+class ShiftWorkError extends Error {
+  String description;
+  ShiftWorkError(String? description)
+      : description = description ?? 'Something went wrong 😢';
+}
+
+// Deals with the direct access to the storage file
 class IOController {
   Future<File> get dataFile async {
     // /data/user/0/com.example.shift/app_flutter
@@ -42,6 +50,7 @@ class IOController {
 
 // weight of fatigue just after the work finished
 double initialWeight = 2;
+
 // the attenuation time of fatigue in minutes
 double tau = 60;
 
@@ -56,6 +65,7 @@ abstract class IObject {
   IObject create({required String id});
 }
 
+// A wrapper object for every DataType
 class ObjectData {
   static List<String> objectOrderDefault = [];
   static Map<String, IObject> objectMapDefault = {};
@@ -119,6 +129,7 @@ class ObjectData {
       };
 }
 
+//The model of the entire database
 class Data {
   ObjectData shiftData;
   ObjectData memberData;
@@ -248,6 +259,8 @@ class Shift implements IObject {
       };
 }
 
+enum GetLoadScheme { plain, fatigue }
+
 class Member implements IObject {
   static String nameDefault = 'Unnamed';
   static double preloadDefault = 0;
@@ -262,9 +275,9 @@ class Member implements IObject {
   List<String> vacancyIDs;
   String description;
 
-  double previousToTalLoad = 0;
+  double previousTotalLoad = 0;
   double previousLoad = 0;
-  DateTime previousLoadEndDateTime = DateTime(1970);
+  DateTime previousLoadEndDateTime = DateTime(0);
 
   Member(
       {required this.id,
@@ -291,8 +304,31 @@ class Member implements IObject {
     return true;
   }
 
-  double getLoad(Duration duration) {
-    return previousToTalLoad + previousLoad * weight(duration.inMinutes);
+  double getLoad(
+      {GetLoadScheme scheme = GetLoadScheme.plain,
+      DateTime? workStartDateTime}) {
+    if (scheme == GetLoadScheme.plain) {
+      return previousTotalLoad + previousLoad;
+    }
+    if (scheme == GetLoadScheme.fatigue) {
+      if (workStartDateTime == null) {
+        throw ShiftWorkError(
+            '@param workStartTime is required when GetLoadScheme.fatigue is used in getLoad method');
+      }
+      return _calculateLoad(
+          workStartDateTime.difference(previousLoadEndDateTime));
+    }
+    throw ShiftWorkError('$scheme is not implemented');
+  }
+
+  void addLoad(double load, {DateTime? at}) {
+    previousTotalLoad += previousLoad;
+    previousLoad = load;
+    previousLoadEndDateTime = at ?? previousLoadEndDateTime;
+  }
+
+  double _calculateLoad(Duration duration) {
+    return previousTotalLoad + previousLoad * weight(duration.inMinutes);
   }
 
   double weight(int t) {
@@ -335,7 +371,8 @@ class Member implements IObject {
 
 class Work implements IObject {
   static String nameDefault = "Unnamed";
-  static double loadDefault = 0;
+  static double loadDefault = 1;
+  static int numberOfPeopleNeededDefault = 1;
   static List<String> fixedMemberIdsDefault = [];
   static List<String> memberIdsDefault = [];
   static String descriptionDefault = "";
@@ -347,7 +384,9 @@ class Work implements IObject {
 
   @override
   String name;
+
   double load;
+  int numberOfPeopleNeeded;
   DateTime startDateTime;
   DateTime endDateTime;
   List<String> fixedMemberIds;
@@ -358,6 +397,7 @@ class Work implements IObject {
       {required this.id,
       String? name,
       double? load,
+      int? numberOfPeopleNeeded,
       DateTime? startDateTime,
       DateTime? endDateTime,
       List<String>? fixedMemberIds,
@@ -365,6 +405,8 @@ class Work implements IObject {
       String? description = ""})
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
+        numberOfPeopleNeeded =
+            numberOfPeopleNeeded ?? numberOfPeopleNeededDefault,
         startDateTime = startDateTime ?? startDateTimeDefault,
         endDateTime = endDateTime ?? endDateTimeDefault,
         fixedMemberIds = fixedMemberIds ?? List.from(fixedMemberIdsDefault),
@@ -379,6 +421,7 @@ class Work implements IObject {
   static setDefault(Map<String, dynamic> workJson) {
     nameDefault = workJson['name'];
     loadDefault = workJson['load'];
+    numberOfPeopleNeededDefault = workJson['numberOfPeopleNeeded'];
     startDateTimeDefault = DateTime.parse(workJson['startDateTime']);
     endDateTimeDefault = DateTime.parse(workJson['endDateTime']);
     fixedMemberIdsDefault = workJson['fixedMemberIds'];
@@ -389,6 +432,8 @@ class Work implements IObject {
   Work.fromJson(this.id, Map<String, dynamic> workJson)
       : name = workJson['name'] ?? nameDefault,
         load = workJson['load'] ?? loadDefault,
+        numberOfPeopleNeeded =
+            workJson['numberOfPeopleNeeded'] ?? numberOfPeopleNeededDefault,
         startDateTime = DateTime.parse(workJson['startDateTime']),
         endDateTime = DateTime.parse(workJson['endDateTime']),
         fixedMemberIds =
@@ -400,6 +445,7 @@ class Work implements IObject {
   Map<String, dynamic> toJson() => {
         'name': name,
         'load': load,
+        'numberOfPeopleNeeded': numberOfPeopleNeeded,
         'startDateTime': startDateTime.toString(),
         'endDateTime': endDateTime.toString(),
         'fixedMemberIds': fixedMemberIds,

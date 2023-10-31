@@ -1,11 +1,12 @@
 import 'dart:convert';
 
+import 'package:calendar_view/calendar_view.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import 'lib.dart';
+import 'core.dart';
 
 final logger = Logger('global');
 
@@ -307,16 +308,16 @@ class _EditPageState extends State<EditPage> {
             },
           ),
         ),
-        //   actions: [
-        //     TextButton(
-        //         onPressed: () {
-        //           Provider.of<DataController>(context, listen: false)
-        //               .generateShift(widget.shiftId);
-        //           Navigator.of(context).push(MaterialPageRoute(
-        //               builder: (context) => ShowPage(widget.shiftId)));
-        //         },
-        //         child: const Text('Create'))
-        //   ],
+        actions: [
+          TextButton(
+              onPressed: () {
+                Provider.of<DataController>(context, listen: false)
+                    .generateShift(widget.shiftId);
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => ShowPage(widget.shiftId)));
+              },
+              child: const Text('Create'))
+        ],
       ),
       body: <Widget>[
         Consumer<DataController>(
@@ -575,7 +576,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
 }
 
 DateFormat dateFormat = DateFormat('yyyy-MM-dd');
-DateFormat timeFormat = DateFormat('hh:mm');
+DateFormat timeFormat = DateFormat('hh:mm a');
 
 class DateFormField extends FormField<DateTime> {
   final Work work;
@@ -740,6 +741,56 @@ class WorkListItem extends StatelessWidget {
   }
 }
 
+class ShowPage extends StatelessWidget {
+  final String shiftId;
+  const ShowPage(this.shiftId, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CalendarControllerProvider(
+      controller: EventController(),
+      child: CalendarView(shiftId),
+    );
+  }
+}
+
+class CalendarView extends StatelessWidget {
+  final String shiftId;
+  const CalendarView(this.shiftId, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final shift =
+        Provider.of<DataController>(context, listen: false).getShift(shiftId);
+    List<Work> works = [];
+    for (final workId in shift.workIds) {
+      works.add(
+          Provider.of<DataController>(context, listen: false).getWork(workId));
+    }
+
+    for (final work in works) {
+      List<Member> members = [];
+      for (final memberId in work.memberIds) {
+        members.add(Provider.of<DataController>(context, listen: false)
+            .getMember(memberId));
+      }
+      Iterable<String> memberNames = members.map((member) => member.name);
+      final workEvent = CalendarEventData(
+          date: work.startDateTime,
+          endDate: work.endDateTime,
+          startTime: work.startDateTime,
+          endTime: work.endDateTime,
+          title: work.name,
+          event: work.name,
+          description: memberNames.join(', '));
+      CalendarControllerProvider.of(context).controller.add(workEvent);
+    }
+    return const Scaffold(
+      body: DayView(),
+    );
+  }
+}
+
 class DataController extends ChangeNotifier {
   final IOController ioController = IOController();
 
@@ -893,7 +944,66 @@ class DataController extends ChangeNotifier {
     return this;
   }
 
-  void generateShift(String shiftId) {}
+  void generateShift(String shiftId) {
+    List<Work> worksLeft = [];
+    for (final workId in getShift(shiftId).workIds) {
+      final work = getWork(workId);
+      work.memberIds = [];
+      worksLeft.add(work);
+    }
+    List<Member> members = [];
+    for (final memberId in getShift(shiftId).memberIds) {
+      members.add(getMember(memberId));
+    }
+
+    Work nextWork;
+    Member nextMember;
+    while (worksLeft.isNotEmpty) {
+      nextWork = _getNextWork(worksLeft);
+      while (true) {
+        nextMember = _getNextMember(members,
+            at: nextWork.startDateTime,
+            scheme: GetNextMemberScheme.getLeastLoadWithFatigue);
+        if (_isAvailable(nextMember)) {
+          nextWork.memberIds.add(nextMember.id);
+          nextMember.addLoad(nextWork.load, at: nextWork.endDateTime);
+          break;
+        }
+      }
+      worksLeft.remove(nextWork);
+    }
+  }
+
+  Work _getNextWork(List<Work> works,
+      {GetNextWorkScheme scheme = GetNextWorkScheme.getFirst}) {
+    if (scheme == GetNextWorkScheme.getFirst) {
+      return works[0];
+    }
+    return works[0];
+  }
+
+  Member _getNextMember(List<Member> members,
+      {DateTime? at,
+      GetNextMemberScheme scheme = GetNextMemberScheme.getLeastLoad}) {
+    if (scheme == GetNextMemberScheme.getLeastLoad) {
+      members.sort((a, b) => a
+          .getLoad(scheme: GetLoadScheme.plain)
+          .compareTo(b.getLoad(scheme: GetLoadScheme.plain)));
+      return members[0];
+    }
+    if (scheme == GetNextMemberScheme.getLeastLoadWithFatigue) {
+      members.sort((a, b) => a
+          .getLoad(scheme: GetLoadScheme.fatigue, workStartDateTime: at)
+          .compareTo(
+              b.getLoad(scheme: GetLoadScheme.fatigue, workStartDateTime: at)));
+      return members[0];
+    }
+    throw ShiftWorkError('$scheme is not implemented');
+  }
+
+  bool _isAvailable(Member member) {
+    return true;
+  }
 
   DataController notify() {
     notifyListeners();
@@ -905,3 +1015,7 @@ class DataController extends ChangeNotifier {
     return this;
   }
 }
+
+enum GetNextWorkScheme { getFirst }
+
+enum GetNextMemberScheme { getLeastLoad, getLeastLoadWithFatigue }
