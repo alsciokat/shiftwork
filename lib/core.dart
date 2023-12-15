@@ -1,6 +1,4 @@
 import 'dart:math';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 
 const defaultId = 'default';
 const defaultTempId = 'temp';
@@ -25,29 +23,6 @@ class ShiftWorkError extends Error {
       : description = description ?? 'Something went wrong 😢';
 }
 
-// Deals with the direct access to the storage file
-class IOController {
-  Future<File> get dataFile async {
-    // /data/user/0/com.example.shift/app_flutter
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/shift_data.json');
-    if (!file.existsSync()) {
-      file.create(recursive: true);
-    }
-    return file;
-  }
-
-  Future<File> write(String data) async {
-    final file = await dataFile;
-    return file.writeAsString(data);
-  }
-
-  Future<String> read() async {
-    final file = await dataFile;
-    return file.readAsString();
-  }
-}
-
 // weight of fatigue just after the work finished
 double initialWeight = 2;
 
@@ -65,7 +40,7 @@ abstract class IObject {
   IObject create({required String id});
 }
 
-// A wrapper object for every DataType
+// A wrapper object for each DataType
 class ObjectData {
   static List<String> objectOrderDefault = [];
   static Map<String, IObject> objectMapDefault = {};
@@ -129,22 +104,25 @@ class ObjectData {
       };
 }
 
-//The model of the entire database
+// The model of the entire database
 class Data {
   ObjectData shiftData;
   ObjectData memberData;
+  ObjectData groupData;
   ObjectData workData;
   ObjectData vacancyData;
 
   Data(
       {required this.shiftData,
       required this.memberData,
+      required this.groupData,
       required this.workData,
       required this.vacancyData});
 
   Data.fromDefault()
       : shiftData = ObjectData(defaultObject: Shift(id: defaultId)),
         memberData = ObjectData(defaultObject: Member(id: defaultId)),
+        groupData = ObjectData(defaultObject: Group(id: defaultId)),
         workData = ObjectData(defaultObject: Work(id: defaultId)),
         vacancyData = ObjectData(defaultObject: Vacancy(id: defaultId));
 
@@ -170,6 +148,18 @@ class Data {
       } else if (key == 'objectIds') {
         json.forEach((id, memberJson) {
           memberData.objectMap[id] = Member.fromJson(id, memberJson);
+        });
+      }
+    });
+    dataJson[DataType.group.name]?.forEach((key, json) {
+      if (key == 'objectOrder') {
+        groupData.objectOrder = json;
+      } else if (key == defaultId) {
+        Group.setDefault(json);
+        groupData.defaultObject = Group.fromJson(defaultId, json);
+      } else if (key == 'objectIds') {
+        json.forEach((id, groupJson) {
+          groupData.objectMap[id] = Group.fromJson(id, groupJson);
         });
       }
     });
@@ -203,6 +193,7 @@ class Data {
   Map toJson() => {
         DataType.shift.name: shiftData.toJson(),
         DataType.member.name: memberData.toJson(),
+        DataType.group.name: groupData.toJson(),
         DataType.work.name: workData.toJson(),
         DataType.vacancy.name: vacancyData.toJson(),
       };
@@ -279,6 +270,8 @@ class Member implements IObject {
   double previousLoad = 0;
   DateTime previousLoadEndDateTime = DateTime(0);
 
+  bool isAvailable = true;
+
   Member(
       {required this.id,
       String? name,
@@ -293,15 +286,6 @@ class Member implements IObject {
   @override
   Member create({required String id}) {
     return Member(id: id);
-  }
-
-  bool isAvailable(List<Vacancy> vacancies, DateTime dateTime) {
-    for (final vacancy in vacancies) {
-      if (vacancy.include(dateTime)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   double getLoad(
@@ -369,10 +353,46 @@ class Member implements IObject {
       };
 }
 
+class Group implements IObject {
+  static String nameDefault = 'Unnamed';
+  static List<String> memberIdsDefault = [];
+
+  @override
+  final String id;
+  @override
+  String name;
+
+  List<String> memberIds;
+
+  Group({required this.id, String? name, List<String>? memberIds})
+      : name = name ?? nameDefault,
+        memberIds = memberIds ?? memberIdsDefault;
+
+  @override
+  Group create({required String id}) {
+    return Group(id: id);
+  }
+
+  static setDefault(Map<String, dynamic> groupJson) {
+    nameDefault = groupJson['name'];
+    memberIdsDefault = groupJson['memberIds'];
+  }
+
+  Group.fromJson(this.id, Map<String, dynamic> groupJson)
+      : name = groupJson['name'] ?? nameDefault,
+        memberIds = groupJson['memberIds'] ?? memberIdsDefault;
+
+  @override
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'memberIds': memberIds,
+      };
+}
+
 class Work implements IObject {
   static String nameDefault = "Unnamed";
   static double loadDefault = 1;
-  static int numberOfPeopleNeededDefault = 1;
+  static int numberOfMemberNeededDefault = 1;
   static List<String> fixedMemberIdsDefault = [];
   static List<String> memberIdsDefault = [];
   static String descriptionDefault = "";
@@ -386,7 +406,7 @@ class Work implements IObject {
   String name;
 
   double load;
-  int numberOfPeopleNeeded;
+  int numberOfMemberNeeded;
   DateTime startDateTime;
   DateTime endDateTime;
   List<String> fixedMemberIds;
@@ -397,7 +417,7 @@ class Work implements IObject {
       {required this.id,
       String? name,
       double? load,
-      int? numberOfPeopleNeeded,
+      int? numberOfMemberNeeded,
       DateTime? startDateTime,
       DateTime? endDateTime,
       List<String>? fixedMemberIds,
@@ -405,8 +425,8 @@ class Work implements IObject {
       String? description = ""})
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
-        numberOfPeopleNeeded =
-            numberOfPeopleNeeded ?? numberOfPeopleNeededDefault,
+        numberOfMemberNeeded =
+            numberOfMemberNeeded ?? numberOfMemberNeededDefault,
         startDateTime = startDateTime ?? startDateTimeDefault,
         endDateTime = endDateTime ?? endDateTimeDefault,
         fixedMemberIds = fixedMemberIds ?? List.from(fixedMemberIdsDefault),
@@ -421,7 +441,7 @@ class Work implements IObject {
   static setDefault(Map<String, dynamic> workJson) {
     nameDefault = workJson['name'];
     loadDefault = workJson['load'];
-    numberOfPeopleNeededDefault = workJson['numberOfPeopleNeeded'];
+    numberOfMemberNeededDefault = workJson['numberOfMemberNeeded'];
     startDateTimeDefault = DateTime.parse(workJson['startDateTime']);
     endDateTimeDefault = DateTime.parse(workJson['endDateTime']);
     fixedMemberIdsDefault = workJson['fixedMemberIds'];
@@ -432,8 +452,8 @@ class Work implements IObject {
   Work.fromJson(this.id, Map<String, dynamic> workJson)
       : name = workJson['name'] ?? nameDefault,
         load = workJson['load'] ?? loadDefault,
-        numberOfPeopleNeeded =
-            workJson['numberOfPeopleNeeded'] ?? numberOfPeopleNeededDefault,
+        numberOfMemberNeeded =
+            workJson['numberOfMemberNeeded'] ?? numberOfMemberNeededDefault,
         startDateTime = DateTime.parse(workJson['startDateTime']),
         endDateTime = DateTime.parse(workJson['endDateTime']),
         fixedMemberIds =
@@ -445,7 +465,7 @@ class Work implements IObject {
   Map<String, dynamic> toJson() => {
         'name': name,
         'load': load,
-        'numberOfPeopleNeeded': numberOfPeopleNeeded,
+        'numberOfMemberNeeded': numberOfMemberNeeded,
         'startDateTime': startDateTime.toString(),
         'endDateTime': endDateTime.toString(),
         'fixedMemberIds': fixedMemberIds,
