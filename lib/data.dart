@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
@@ -123,6 +124,21 @@ class DataController extends ChangeNotifier {
     return this;
   }
 
+  bool _tempGroup = false;
+  String _tempGroupId = defaultTempId;
+
+  Group getGroup(String id) {
+    if (_tempGroup & (_tempGroupId == id)) {
+      return data.groupData.tempObject as Group;
+    }
+    if (!data.groupData.objectMap.keys.contains(id)) {
+      _tempGroup = true;
+      _tempGroupId = id;
+      return data.groupData.getTemp(id) as Group;
+    }
+    return data.groupData.getById(id) as Group;
+  }
+
   bool _tempWork = false;
   String _tempWorkId = defaultTempId;
 
@@ -162,8 +178,19 @@ class DataController extends ChangeNotifier {
     return this;
   }
 
-  Vacancy getVacancy(String vacancyId) {
-    return data.vacancyData.getById(vacancyId) as Vacancy;
+  bool _tempVacancy = false;
+  String _tempVacancyId = defaultTempId;
+
+  Vacancy getVacancy(String id) {
+    if (_tempVacancy & (_tempVacancyId == id)) {
+      return data.vacancyData.tempObject as Vacancy;
+    }
+    if (!data.vacancyData.objectMap.keys.contains(id)) {
+      _tempVacancy = true;
+      _tempVacancyId = id;
+      return data.vacancyData.getTemp(id) as Vacancy;
+    }
+    return data.vacancyData.getById(id) as Vacancy;
   }
 
   DataController saveTemp() {
@@ -183,47 +210,100 @@ class DataController extends ChangeNotifier {
   }
 
   void generateShift(String shiftId) {
-    List<Work> worksLeft = getShift(shiftId).workIds.map<Work>((workId) {
+    final Shift shift = getShift(shiftId);
+    Leniency gFixedMemberLeniency;
+    int efml = 1;
+    Leniency gFixedGroupLeniency;
+    int efgl = 0;
+    Leniency gMaximumAvailableLeniency = shift.maximumAvailableLeniency;
+    List<Work> worksLeft = shift.workIds.map<Work>((workId) {
       final work = getWork(workId);
       work.memberIds = [];
       return work;
     }).toList();
-    List<Member> members = getShift(shiftId)
-        .memberIds
-        .map<Member>((memberId) => getMember(memberId))
-        .toList();
+    List<Member> members =
+        shift.memberIds.map<Member>((memberId) => getMember(memberId)).toList();
+    List<Group> groups =
+        shift.groupIds.map<Group>((groupId) => getGroup(groupId)).toList();
     Work nextWork;
+    Member? maybeNextMember;
     Member nextMember;
 
     // Main Loop
     while (worksLeft.isNotEmpty) {
       nextWork = _getNextWork(worksLeft);
-
-      while (nextWork.memberIds.length >= nextWork.numberOfMemberNeeded) {
-        Member? _nextMember = _getNextMember(members,
-            at: nextWork.startDateTime,
-            scheme: GetNextMemberScheme.getLeastLoadWithFatigue);
-        if (_nextMember == null) {
-          throw ShiftWorkError('No available member for ${nextWork.name}');
-        }
-        nextMember = _nextMember;
-
-        if (_isAvailable(
-            nextMember, nextWork.startDateTime, nextWork.endDateTime)) {
-          nextWork.memberIds.add(nextMember.id);
-          nextMember.addLoad(nextWork.load, at: nextWork.endDateTime);
-          continue;
-        } else {
-          nextMember.isAvailable = false;
-        }
+      for (Group group in groups) {
+        group.availableNow =
+            min(group.maximumAvailable, group.memberIds.length);
       }
 
-      if (nextWork.memberIds.length > nextWork.numberOfMemberNeeded) {
+      // Get the list of available members by iterating over all possible configurations.
+      for (int i = 0; i < 4; i++) {
+        if (i & (1 << efml) == (1 << efml)) {
+          if (nextWork.fixedMemberLeniency == Leniency.force ||
+              (nextWork.fixedMemberLeniency == Leniency.inherit &&
+                  shift.fixedMemberLeniency == Leniency.force)) {
+            continue;
+          }
+          gFixedMemberLeniency = Leniency.recommend;
+        } else {
+          gFixedMemberLeniency = Leniency.force;
+        }
+        if (i & (1 << efgl) == (1 << efgl)) {
+          if (nextWork.fixedGroupLeniency == Leniency.force ||
+              (nextWork.fixedGroupLeniency == Leniency.inherit &&
+                  shift.fixedGroupLeniency == Leniency.force)) {
+            continue;
+          }
+          gFixedGroupLeniency = Leniency.recommend;
+        } else {
+          gFixedGroupLeniency = Leniency.force;
+        }
+
+        for (Member member in members) {
+          member.availablity = _calculateAvailablity(
+              member, nextWork, gFixedMemberLeniency, gFixedGroupLeniency);
+        }
+        if (members
+                .where((member) => member.availablity != notAvailable)
+                .length >=
+            nextWork.numberOfMembersNeeded) {
+          break;
+        }
+      }
+      if (members.where((member) => member.availablity != notAvailable).length <
+          nextWork.numberOfMembersNeeded) {
+        throw ShiftWorkError('Not enough member for ${nextWork.name}');
+      }
+
+      // Assign a member one by one
+      while (nextWork.memberIds.length >= nextWork.numberOfMembersNeeded) {
+        // Get a member for the work
+        maybeNextMember = _getNextMember(
+            members,
+            groups,
+            nextWork.startDateTime,
+            GetNextMemberScheme.getLeastLoadWithFatigue,
+            gMaximumAvailableLeniency);
+
+        if (maybeNextMember == null) {
+          throw ShiftWorkError("Not enough members for ${nextWork.name}.");
+        }
+        nextMember = maybeNextMember;
+
+        // Assign
+        nextWork.memberIds.add(nextMember.id);
+        nextMember.addLoad(nextWork.load, at: nextWork.endDateTime);
+        nextMember.availablity = notAvailable;
+      }
+
+      // This is just for safety. Just in case the availablity is used out of this function.
+      for (Member member in members) {
+        member.availablity = 1;
+      }
+      if (nextWork.memberIds.length > nextWork.numberOfMembersNeeded) {
         throw ShiftWorkError(
             'Number of members exceeded the required while assigning members.');
-      }
-      for (final member in members) {
-        member.isAvailable = true;
       }
       worksLeft.remove(nextWork);
     }
@@ -263,29 +343,69 @@ class DataController extends ChangeNotifier {
     throw ShiftWorkError('$scheme is not implemented');
   }
 
-  Member? _getNextMember(Iterable<Member> members,
-      {DateTime? at,
-      GetNextMemberScheme scheme = GetNextMemberScheme.getLeastLoad}) {
-    Iterable<Member> candidateMembers =
-        members.where((member) => member.isAvailable);
-    if (candidateMembers.isEmpty) {
-      return null;
+  Member? _getNextMember(
+      Iterable<Member> members,
+      Iterable<Group> groups,
+      DateTime? at,
+      GetNextMemberScheme scheme,
+      Leniency gMaximumAvailableLeniency) {
+    new_candidate:
+    while (!members.every((member) => member.availablity == notAvailable)) {
+      Member candidate = _getCandidateMember(members, at, scheme);
+      // This is sus! What if a member is set to notAvailable, but not removed from the group.availableNow counter.
+      for (final group in groups) {
+        if (group.memberIds.contains(candidate.id)) {
+          if (group.availableNow <= 0) {
+            if (group.maximumAvailableLeniency == Leniency.force ||
+                (group.maximumAvailableLeniency == Leniency.inherit &&
+                    gMaximumAvailableLeniency == Leniency.force)) {
+              candidate.availablity = notAvailable;
+            } else {
+              candidate.availablity = 0.5;
+            }
+            continue new_candidate;
+          }
+          group.availableNow -= 1;
+          if (group.availableNow == 0) {
+            for (Member member in group.memberIds
+                .map<Member>((memberId) => getMember(memberId))) {
+              if (group.maximumAvailableLeniency == Leniency.force ||
+                  (group.maximumAvailableLeniency == Leniency.inherit &&
+                      gMaximumAvailableLeniency == Leniency.force)) {
+                member.availablity = notAvailable;
+              } else {
+                member.availablity = 0.5;
+              }
+            }
+          }
+        }
+      }
+      return candidate;
     }
+    return null;
+  }
+
+  Member _getCandidateMember(
+      Iterable<Member> members, DateTime? at, GetNextMemberScheme scheme) {
     if (scheme == GetNextMemberScheme.getLeastLoad) {
-      return candidateMembers.reduce((member1, member2) {
-        if (member1.getLoad(scheme: GetLoadScheme.plain) <=
-            member1.getLoad(scheme: GetLoadScheme.plain)) {
+      return members.reduce((member1, member2) {
+        if (member1.getLoad(scheme: GetLoadScheme.plain) /
+                member1.availablity <=
+            member2.getLoad(scheme: GetLoadScheme.plain) /
+                member2.availablity) {
           return member1;
         }
         return member2;
       });
     }
     if (scheme == GetNextMemberScheme.getLeastLoadWithFatigue) {
-      return candidateMembers.reduce((member1, member2) {
+      return members.reduce((member1, member2) {
         if (member1.getLoad(
-                scheme: GetLoadScheme.fatigue, workStartDateTime: at) <=
-            member1.getLoad(
-                scheme: GetLoadScheme.fatigue, workStartDateTime: at)) {
+                    scheme: GetLoadScheme.fatigue, workStartDateTime: at) /
+                member1.availablity <=
+            member2.getLoad(
+                    scheme: GetLoadScheme.fatigue, workStartDateTime: at) /
+                member2.availablity) {
           return member1;
         }
         return member2;
@@ -294,16 +414,37 @@ class DataController extends ChangeNotifier {
     throw ShiftWorkError('$scheme is not implemented');
   }
 
-  bool _isAvailable(
-      Member member, DateTime startDateTime, DateTime endDateTime) {
+  final double notAvailable = 0.0001;
+  final double absolutely = 10000;
+
+  double _calculateAvailablity(Member member, Work work,
+      Leniency fixedMemberLeniency, Leniency fixedGroupLeniency) {
     Iterable<Vacancy> vacancies =
-        member.vacancyIDs.map<Vacancy>((vacancyID) => getVacancy(vacancyID));
+        member.vacancyIds.map<Vacancy>((vacancyId) => getVacancy(vacancyId));
     for (final vacancy in vacancies) {
-      if (vacancy.include(startDateTime) || vacancy.include(endDateTime)) {
-        return false;
+      if (vacancy.include(work.startDateTime) ||
+          vacancy.include(work.endDateTime)) {
+        return notAvailable;
       }
     }
-    return true;
+    if (work.fixedMemberIds.contains(member.id)) {
+      if (fixedMemberLeniency == Leniency.force) {
+        return absolutely;
+      } else if (fixedMemberLeniency == Leniency.recommend) {
+        return 1.5;
+      }
+    }
+    for (final group
+        in work.fixedGroupIds.map<Group>((groupId) => getGroup(groupId))) {
+      if (group.memberIds.contains(member.id)) {
+        if (fixedGroupLeniency == Leniency.force) {
+          return absolutely;
+        } else if (fixedGroupLeniency == Leniency.recommend) {
+          return 1.5;
+        }
+      }
+    }
+    return 1;
   }
 
   DataController notify() {

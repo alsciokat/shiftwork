@@ -23,12 +23,6 @@ class ShiftWorkError extends Error {
       : description = description ?? 'Something went wrong 😢';
 }
 
-// weight of fatigue just after the work finished
-double initialWeight = 2;
-
-// the attenuation time of fatigue in minutes
-double tau = 60;
-
 abstract class IObject {
   static String nameDefault = 'Unnamed';
   final String id;
@@ -202,25 +196,44 @@ class Data {
 class Shift implements IObject {
   static String nameDefault = "Untitled";
   static List<String> memberIdsDefault = [];
+  static List<String> groupIdsDefault = [];
   static List<String> workIdsDefault = [];
+  static Leniency fixedMemberLeniencyDefault = Leniency.force;
+  static Leniency fixedGroupLeniencyDefault = Leniency.recommend;
+  static Leniency maximumAvailableLeniencyDefault = Leniency.force;
   static String descriptionDefault = "";
+
   @override
   final String id;
   @override
   String name;
   List<String> memberIds;
+  List<String> groupIds;
   List<String> workIds;
+
+  Leniency fixedMemberLeniency;
+  Leniency fixedGroupLeniency;
+  Leniency maximumAvailableLeniency;
   String description;
 
   Shift(
       {required this.id,
       String? title,
-      List<String>? memberIDs,
+      List<String>? memberIds,
+      List<String>? groupIds,
       List<String>? workIDs,
+      Leniency? fixedMemberLeniency,
+      Leniency? fixedGroupLeniency,
+      Leniency? maximumAvailableLeniency,
       String? description})
       : name = title ?? nameDefault,
-        memberIds = memberIDs ?? List.from(memberIdsDefault),
+        memberIds = memberIds ?? List.from(memberIdsDefault),
+        groupIds = groupIds ?? List.from(groupIdsDefault),
         workIds = workIDs ?? List.from(workIdsDefault),
+        fixedMemberLeniency = fixedMemberLeniency ?? fixedGroupLeniencyDefault,
+        fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
+        maximumAvailableLeniency =
+            maximumAvailableLeniency ?? maximumAvailableLeniencyDefault,
         description = description ?? descriptionDefault;
 
   @override
@@ -231,31 +244,57 @@ class Shift implements IObject {
   static setDefault(Map<String, dynamic> shiftJson) {
     nameDefault = shiftJson['title'];
     memberIdsDefault = shiftJson['memberIds'];
+    groupIdsDefault = shiftJson['groupIds'];
     workIdsDefault = shiftJson['workIds'];
+    fixedMemberLeniencyDefault =
+        Leniency.values[shiftJson['fixedMemberLeniency']];
+    fixedGroupLeniencyDefault =
+        Leniency.values[shiftJson['fixedGroupLeniency']];
+    maximumAvailableLeniencyDefault =
+        Leniency.values[shiftJson['maximumAvailableLeniency']];
     descriptionDefault = shiftJson['description'];
   }
 
   Shift.fromJson(this.id, Map<String, dynamic> shiftJson)
       : name = shiftJson['title'] ?? nameDefault,
         memberIds = shiftJson['memberIds'] ?? List.from(memberIdsDefault),
+        groupIds = shiftJson['groupIds'] ?? List.from(groupIdsDefault),
         workIds = shiftJson['workIds'] ?? List.from(workIdsDefault),
+        fixedMemberLeniency = Leniency.values[
+            shiftJson['fixedMemberLeniency'] ??
+                fixedMemberLeniencyDefault.index],
+        fixedGroupLeniency = Leniency.values[
+            shiftJson['fixedGroupLeniency'] ?? fixedGroupLeniencyDefault.index],
+        maximumAvailableLeniency = Leniency.values[
+            shiftJson['maximumAvailableLeniency'] ??
+                maximumAvailableLeniencyDefault.index],
         description = shiftJson['description'] ?? descriptionDefault;
 
   @override
   Map<String, dynamic> toJson() => {
         'title': name,
         'memberIds': memberIds,
+        'groupIds': groupIds,
         'workIds': workIds,
+        'fixedMemberLeniency': fixedMemberLeniency.index,
+        'fixedGroupLeniency': fixedGroupLeniency.index,
+        'maximumAvailableLeniency': maximumAvailableLeniency.index,
         'description': description,
       };
 }
+
+// weight of fatigue just after the work finished
+double initialWeight = 2;
+
+// the attenuation time of fatigue in minutes
+double tau = 60;
 
 enum GetLoadScheme { plain, fatigue }
 
 class Member implements IObject {
   static String nameDefault = 'Unnamed';
   static double preloadDefault = 0;
-  static List<String> vacancyIDsDefault = [];
+  static List<String> vacancyIdsDefault = [];
   static String descriptionDefault = "";
 
   @override
@@ -263,23 +302,23 @@ class Member implements IObject {
   @override
   String name;
   double preload = 0;
-  List<String> vacancyIDs;
+  List<String> vacancyIds;
   String description;
 
   double previousTotalLoad = 0;
   double previousLoad = 0;
   DateTime previousLoadEndDateTime = DateTime(0);
 
-  bool isAvailable = true;
+  double availablity = 1;
 
   Member(
       {required this.id,
       String? name,
-      List<String>? vacancyIDs,
+      List<String>? vacancyIds,
       double? preload,
       String? description})
       : name = name ?? nameDefault,
-        vacancyIDs = vacancyIDs ?? List.from(vacancyIDsDefault),
+        vacancyIds = vacancyIds ?? List.from(vacancyIdsDefault),
         preload = preload ?? preloadDefault,
         description = description ?? descriptionDefault;
 
@@ -334,21 +373,21 @@ class Member implements IObject {
   static setDefault(Map<String, dynamic> memberJson) {
     nameDefault = memberJson['name'];
     preloadDefault = memberJson['preload'];
-    vacancyIDsDefault = memberJson['vacancyIDs'];
+    vacancyIdsDefault = memberJson['vacancyIds'];
     descriptionDefault = memberJson['description'];
   }
 
   Member.fromJson(this.id, Map<String, dynamic> memberJson)
       : name = memberJson['name'] ?? nameDefault,
         preload = memberJson['preload'] ?? preloadDefault,
-        vacancyIDs = memberJson['vacancyIDs'] ?? List.from(vacancyIDsDefault),
+        vacancyIds = memberJson['vacancyIds'] ?? List.from(vacancyIdsDefault),
         description = memberJson['description'] ?? descriptionDefault;
 
   @override
   Map<String, dynamic> toJson() => {
         'name': name,
         'preload': preload,
-        'vacancyIDs': vacancyIDs,
+        'vacancyIds': vacancyIds,
         'description': description,
       };
 }
@@ -356,17 +395,31 @@ class Member implements IObject {
 class Group implements IObject {
   static String nameDefault = 'Unnamed';
   static List<String> memberIdsDefault = [];
+  static int maximumAvailableDefault = -1;
+  static Leniency maximumAvailableLeniencyDefault = Leniency.inherit;
 
   @override
   final String id;
   @override
   String name;
+  int maximumAvailable;
+  Leniency maximumAvailableLeniency;
 
   List<String> memberIds;
 
-  Group({required this.id, String? name, List<String>? memberIds})
+  int availableNow = 0;
+
+  Group(
+      {required this.id,
+      String? name,
+      List<String>? memberIds,
+      int? maximumAvailable,
+      Leniency? maximumAvailableLeniency})
       : name = name ?? nameDefault,
-        memberIds = memberIds ?? memberIdsDefault;
+        memberIds = memberIds ?? memberIdsDefault,
+        maximumAvailable = maximumAvailable ?? maximumAvailableDefault,
+        maximumAvailableLeniency =
+            maximumAvailableLeniency ?? maximumAvailableLeniencyDefault;
 
   @override
   Group create({required String id}) {
@@ -376,24 +429,39 @@ class Group implements IObject {
   static setDefault(Map<String, dynamic> groupJson) {
     nameDefault = groupJson['name'];
     memberIdsDefault = groupJson['memberIds'];
+    maximumAvailableDefault = groupJson['maximumAvailable'];
+    maximumAvailableLeniencyDefault =
+        Leniency.values[groupJson['maximumAvailableLeniency']];
   }
 
   Group.fromJson(this.id, Map<String, dynamic> groupJson)
       : name = groupJson['name'] ?? nameDefault,
-        memberIds = groupJson['memberIds'] ?? memberIdsDefault;
+        memberIds = groupJson['memberIds'] ?? List.from(memberIdsDefault),
+        maximumAvailable =
+            groupJson['maximumAvailable'] ?? maximumAvailableDefault,
+        maximumAvailableLeniency = Leniency.values[
+            groupJson['maximumAvailableLeniency'] ??
+                maximumAvailableLeniencyDefault.index];
 
   @override
   Map<String, dynamic> toJson() => {
         'name': name,
         'memberIds': memberIds,
+        'maximumAvailable': maximumAvailable,
+        'maximumAvailableLeniency': maximumAvailableLeniency.index,
       };
 }
+
+enum Leniency { inherit, force, recommend }
 
 class Work implements IObject {
   static String nameDefault = "Unnamed";
   static double loadDefault = 1;
-  static int numberOfMemberNeededDefault = 1;
+  static int numberOfMembersNeededDefault = 1;
   static List<String> fixedMemberIdsDefault = [];
+  static Leniency fixedMemberLeniencyDefault = Leniency.inherit;
+  static List<String> fixedGroupIdsDefault = [];
+  static Leniency fixedGroupLeniencyDefault = Leniency.inherit;
   static List<String> memberIdsDefault = [];
   static String descriptionDefault = "";
   static DateTime startDateTimeDefault = DateTime.now();
@@ -406,10 +474,15 @@ class Work implements IObject {
   String name;
 
   double load;
-  int numberOfMemberNeeded;
+  int numberOfMembersNeeded;
   DateTime startDateTime;
   DateTime endDateTime;
+
   List<String> fixedMemberIds;
+  Leniency fixedMemberLeniency;
+  List<String> fixedGroupIds;
+  Leniency fixedGroupLeniency;
+
   List<String> memberIds;
   String description;
 
@@ -421,15 +494,21 @@ class Work implements IObject {
       DateTime? startDateTime,
       DateTime? endDateTime,
       List<String>? fixedMemberIds,
+      Leniency? fixedMemberLeniency,
+      List<String>? fixedGroupIds,
+      Leniency? fixedGroupLeniency,
       List<String>? memberIds,
       String? description = ""})
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
-        numberOfMemberNeeded =
-            numberOfMemberNeeded ?? numberOfMemberNeededDefault,
+        numberOfMembersNeeded =
+            numberOfMemberNeeded ?? numberOfMembersNeededDefault,
         startDateTime = startDateTime ?? startDateTimeDefault,
         endDateTime = endDateTime ?? endDateTimeDefault,
         fixedMemberIds = fixedMemberIds ?? List.from(fixedMemberIdsDefault),
+        fixedMemberLeniency = fixedMemberLeniency ?? fixedMemberLeniencyDefault,
+        fixedGroupIds = fixedGroupIds ?? List.from(fixedGroupIdsDefault),
+        fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
         memberIds = memberIds ?? List.from(memberIdsDefault),
         description = description ?? descriptionDefault;
 
@@ -441,10 +520,14 @@ class Work implements IObject {
   static setDefault(Map<String, dynamic> workJson) {
     nameDefault = workJson['name'];
     loadDefault = workJson['load'];
-    numberOfMemberNeededDefault = workJson['numberOfMemberNeeded'];
+    numberOfMembersNeededDefault = workJson['numberOfMembersNeeded'];
     startDateTimeDefault = DateTime.parse(workJson['startDateTime']);
     endDateTimeDefault = DateTime.parse(workJson['endDateTime']);
     fixedMemberIdsDefault = workJson['fixedMemberIds'];
+    fixedMemberLeniencyDefault =
+        Leniency.values[workJson['fixedMemberLeniency']];
+    fixedGroupIdsDefault = workJson['fixedGroupIds'];
+    fixedGroupLeniencyDefault = Leniency.values[workJson['fixedGroupLeniency']];
     memberIdsDefault = workJson['memberIds'];
     descriptionDefault = workJson['description'];
   }
@@ -452,12 +535,18 @@ class Work implements IObject {
   Work.fromJson(this.id, Map<String, dynamic> workJson)
       : name = workJson['name'] ?? nameDefault,
         load = workJson['load'] ?? loadDefault,
-        numberOfMemberNeeded =
-            workJson['numberOfMemberNeeded'] ?? numberOfMemberNeededDefault,
+        numberOfMembersNeeded =
+            workJson['numberOfMembersNeeded'] ?? numberOfMembersNeededDefault,
         startDateTime = DateTime.parse(workJson['startDateTime']),
         endDateTime = DateTime.parse(workJson['endDateTime']),
         fixedMemberIds =
             workJson['fixedMemberIds'] ?? List.from(fixedMemberIdsDefault),
+        fixedMemberLeniency = Leniency.values[workJson['fixedMemberLeniency'] ??
+            fixedMemberLeniencyDefault.index],
+        fixedGroupIds =
+            workJson['fixedGroupIds'] ?? List.from(fixedGroupIdsDefault),
+        fixedGroupLeniency = Leniency.values[
+            workJson['fixedGroupLeniency'] ?? fixedGroupLeniencyDefault.index],
         memberIds = workJson['memberIds'] ?? List.from(memberIdsDefault),
         description = workJson['description'] ?? descriptionDefault;
 
@@ -465,10 +554,13 @@ class Work implements IObject {
   Map<String, dynamic> toJson() => {
         'name': name,
         'load': load,
-        'numberOfMemberNeeded': numberOfMemberNeeded,
+        'numberOfMembersNeeded': numberOfMembersNeeded,
         'startDateTime': startDateTime.toString(),
         'endDateTime': endDateTime.toString(),
         'fixedMemberIds': fixedMemberIds,
+        'fixedfixedMemberLeniency': fixedMemberLeniency.index,
+        'fixedGroupIds': fixedGroupIds,
+        'fixedGroupLeniency': fixedGroupLeniency.index,
         'memberIds': memberIds,
         'description': description,
       };
