@@ -265,19 +265,19 @@ class DataController extends ChangeNotifier {
               member, nextWork, gFixedMemberLeniency, gFixedGroupLeniency);
         }
         if (members
-                .where((member) => member.availablity != notAvailable)
+                .where((member) => member.availablity > notAvailable)
                 .length >=
             nextWork.numberOfMembersNeeded) {
           break;
         }
       }
-      if (members.where((member) => member.availablity != notAvailable).length <
+      if (members.where((member) => member.availablity > notAvailable).length <
           nextWork.numberOfMembersNeeded) {
         throw ShiftWorkError('Not enough member for ${nextWork.name}');
       }
 
-      // Assign a member one by one
-      while (nextWork.memberIds.length >= nextWork.numberOfMembersNeeded) {
+      // Assign a member one by one. Severe mistake at a90c675. It was '>='
+      while (nextWork.memberIds.length < nextWork.numberOfMembersNeeded) {
         // Get a member for the work
         maybeNextMember = _getNextMember(
             members,
