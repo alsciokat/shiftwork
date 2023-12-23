@@ -85,15 +85,22 @@ class DataController extends ChangeNotifier {
     return this;
   }
 
-  bool _tempMember = false;
+  Iterable<Member> getAllOtherMembers(String groupId) {
+    Iterable<Member> allMembers = data.memberData.objectMap.values
+        .map<Member>((member) => member as Member);
+    return allMembers
+        .where((member) => !getGroup(groupId).memberIds.contains(member.id));
+  }
+
+  bool tempMember = false;
   String _tempMemberId = defaultTempId;
 
   Member getMember(String id) {
-    if (_tempMember & (_tempMemberId == id)) {
+    if (tempMember & (_tempMemberId == id)) {
       return data.memberData.tempObject as Member;
     }
     if (!data.memberData.objectMap.keys.contains(id)) {
-      _tempMember = true;
+      tempMember = true;
       _tempMemberId = id;
       return data.memberData.getTemp(id) as Member;
     }
@@ -113,8 +120,18 @@ class DataController extends ChangeNotifier {
     return this;
   }
 
+  DataController addMemberToGroup(String groupId, String memberId) {
+    getGroup(groupId).memberIds.add(memberId);
+    return this;
+  }
+
   DataController removeMember(String shiftId, String memberId) {
     getShift(shiftId).memberIds.remove(memberId);
+    return this;
+  }
+
+  DataController removeMemberFromGroup(String groupId, String memberId) {
+    getGroup(groupId).memberIds.remove(memberId);
     return this;
   }
 
@@ -124,19 +141,35 @@ class DataController extends ChangeNotifier {
     return this;
   }
 
-  bool _tempGroup = false;
+  bool tempGroup = false;
   String _tempGroupId = defaultTempId;
 
   Group getGroup(String id) {
-    if (_tempGroup & (_tempGroupId == id)) {
+    if (tempGroup & (_tempGroupId == id)) {
       return data.groupData.tempObject as Group;
     }
     if (!data.groupData.objectMap.keys.contains(id)) {
-      _tempGroup = true;
+      tempGroup = true;
       _tempGroupId = id;
       return data.groupData.getTemp(id) as Group;
     }
     return data.groupData.getById(id) as Group;
+  }
+
+  DataController addGrouop(String shiftId, String groupId) {
+    getShift(shiftId).groupIds.add(groupId);
+    return this;
+  }
+
+  DataController removeGroup(String shiftId, String groupId) {
+    getShift(shiftId).groupIds.remove(groupId);
+    return this;
+  }
+
+  DataController deleteGroup(String groupId) {
+    data.groupData.objectOrder.remove(groupId);
+    data.groupData.objectMap.remove(groupId);
+    return this;
   }
 
   bool _tempWork = false;
@@ -178,25 +211,56 @@ class DataController extends ChangeNotifier {
     return this;
   }
 
-  bool _tempVacancy = false;
+  bool tempVacancy = false;
   String _tempVacancyId = defaultTempId;
 
+  Iterable<Vacancy> getAllOtherVacancies(String memberId) {
+    Iterable<Vacancy> allVacancy = data.vacancyData.objectMap.values
+        .map<Vacancy>((vacancy) => vacancy as Vacancy);
+    return allVacancy.where(
+        (vacancy) => !getMember(memberId).vacancyIds.contains(vacancy.id));
+  }
+
   Vacancy getVacancy(String id) {
-    if (_tempVacancy & (_tempVacancyId == id)) {
+    if (tempVacancy & (_tempVacancyId == id)) {
       return data.vacancyData.tempObject as Vacancy;
     }
     if (!data.vacancyData.objectMap.keys.contains(id)) {
-      _tempVacancy = true;
+      tempVacancy = true;
       _tempVacancyId = id;
       return data.vacancyData.getTemp(id) as Vacancy;
     }
     return data.vacancyData.getById(id) as Vacancy;
   }
 
+  DataController addVacancy(String memberId, String vacancyId) {
+    getMember(memberId).vacancyIds.add(vacancyId);
+    return this;
+  }
+
+  DataController removeVacancy(String memberId, String vacancyId) {
+    getMember(memberId).vacancyIds.remove(vacancyId);
+    return this;
+  }
+
+  DataController deleteVacancy(String vacancyId) {
+    data.vacancyData.objectOrder.remove(vacancyId);
+    data.vacancyData.objectMap.remove(vacancyId);
+    return this;
+  }
+
   DataController saveTemp() {
-    if (_tempMember) {
+    if (tempMember) {
       data.memberData.saveTemp();
-      _tempMember = false;
+      tempMember = false;
+    }
+    if (tempGroup) {
+      data.groupData.saveTemp();
+      tempGroup = false;
+    }
+    if (tempVacancy) {
+      data.vacancyData.saveTemp();
+      tempVacancy = false;
     }
     if (_tempWork) {
       data.workData.saveTemp();
@@ -217,7 +281,7 @@ class DataController extends ChangeNotifier {
     int efgl = 0;
     Leniency gMaximumAvailableLeniency = shift.maximumAvailableLeniency;
     List<Work> worksLeft = shift.workIds.map<Work>((workId) {
-      final work = getWork(workId);
+      Work work = getWork(workId);
       work.memberIds = [];
       return work;
     }).toList();

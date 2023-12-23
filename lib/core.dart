@@ -397,6 +397,7 @@ class Group implements IObject {
   static List<String> memberIdsDefault = [];
   static int maximumAvailableDefault = -1;
   static Leniency maximumAvailableLeniencyDefault = Leniency.inherit;
+  static String descriptionDefault = '';
 
   @override
   final String id;
@@ -404,6 +405,7 @@ class Group implements IObject {
   String name;
   int maximumAvailable;
   Leniency maximumAvailableLeniency;
+  String description;
 
   List<String> memberIds;
 
@@ -414,12 +416,14 @@ class Group implements IObject {
       String? name,
       List<String>? memberIds,
       int? maximumAvailable,
-      Leniency? maximumAvailableLeniency})
+      Leniency? maximumAvailableLeniency,
+      String? description})
       : name = name ?? nameDefault,
         memberIds = memberIds ?? memberIdsDefault,
         maximumAvailable = maximumAvailable ?? maximumAvailableDefault,
         maximumAvailableLeniency =
-            maximumAvailableLeniency ?? maximumAvailableLeniencyDefault;
+            maximumAvailableLeniency ?? maximumAvailableLeniencyDefault,
+        description = description ?? descriptionDefault;
 
   @override
   Group create({required String id}) {
@@ -432,6 +436,7 @@ class Group implements IObject {
     maximumAvailableDefault = groupJson['maximumAvailable'];
     maximumAvailableLeniencyDefault =
         Leniency.values[groupJson['maximumAvailableLeniency']];
+    descriptionDefault = groupJson['description'];
   }
 
   Group.fromJson(this.id, Map<String, dynamic> groupJson)
@@ -441,7 +446,8 @@ class Group implements IObject {
             groupJson['maximumAvailable'] ?? maximumAvailableDefault,
         maximumAvailableLeniency = Leniency.values[
             groupJson['maximumAvailableLeniency'] ??
-                maximumAvailableLeniencyDefault.index];
+                maximumAvailableLeniencyDefault.index],
+        description = groupJson['description'] ?? descriptionDefault;
 
   @override
   Map<String, dynamic> toJson() => {
@@ -449,6 +455,7 @@ class Group implements IObject {
         'memberIds': memberIds,
         'maximumAvailable': maximumAvailable,
         'maximumAvailableLeniency': maximumAvailableLeniency.index,
+        'description': description,
       };
 }
 
@@ -568,8 +575,11 @@ class Work implements IObject {
 
 class Vacancy implements IObject {
   static String nameDefault = "Unnamed";
-  static DateTime startDateTimeDefault = DateTime.now();
-  static DateTime endDateTimeDefault = DateTime.now();
+  static DateTime startDateTimeDefault =
+      DateTime.now().copyWith(hour: 0, minute: 0);
+  static DateTime endDateTimeDefault =
+      DateTime.now().copyWith(hour: 0, minute: 0).add(const Duration(days: 1));
+  static bool isPaidDefault = false;
   static String descriptionDefault = "";
 
   @override
@@ -578,6 +588,7 @@ class Vacancy implements IObject {
   String name;
   DateTime startDateTime;
   DateTime endDateTime;
+  bool isPaid;
   String description;
 
   Vacancy(
@@ -585,10 +596,12 @@ class Vacancy implements IObject {
       String? name,
       DateTime? startDateTime,
       DateTime? endDateTime,
+      bool? isPaid,
       String? description})
       : name = name ?? nameDefault,
         startDateTime = startDateTime ?? startDateTimeDefault,
         endDateTime = endDateTime ?? endDateTimeDefault,
+        isPaid = isPaid ?? isPaidDefault,
         description = description ?? descriptionDefault;
 
   @override
@@ -611,6 +624,7 @@ class Vacancy implements IObject {
     nameDefault = vacancyJson['name'];
     startDateTimeDefault = DateTime.parse(vacancyJson['startDateTime']);
     endDateTimeDefault = DateTime.parse(vacancyJson['endDateTime']);
+    isPaidDefault = vacancyJson['isPaid'];
     descriptionDefault = vacancyJson['description'];
   }
 
@@ -618,6 +632,7 @@ class Vacancy implements IObject {
       : name = vacancyJson['name'] ?? nameDefault,
         startDateTime = DateTime.parse(vacancyJson['startDateTime']),
         endDateTime = DateTime.parse(vacancyJson['endDateTime']),
+        isPaid = vacancyJson['isPaid'],
         description = vacancyJson['description'] ?? descriptionDefault;
 
   @override
@@ -625,6 +640,7 @@ class Vacancy implements IObject {
         'name': name,
         'startDateTime': startDateTime.toString(),
         'endDataTime': endDateTime.toString(),
+        'isPaid': isPaid,
         'description': description,
       };
 }
