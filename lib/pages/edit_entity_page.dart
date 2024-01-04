@@ -38,8 +38,7 @@ class _EditEntityPageState extends State<EditEntityPage> {
   void save(DataController dataController) {
     if (pageNumber == 0) {
       memberFormKey.currentState?.save();
-      dataController.data.memberData.saveTemp();
-      dataController.tempMember = false;
+      dataController.saveTempMember();
       if (!dataController
           .getShift(widget.shiftId)
           .memberIds
@@ -48,8 +47,7 @@ class _EditEntityPageState extends State<EditEntityPage> {
       }
     } else if (pageNumber == 1) {
       groupFormKey.currentState?.save();
-      dataController.data.groupData.saveTemp();
-      dataController.tempGroup = false;
+      dataController.saveTempGroup();
       if (!dataController.getShift(widget.shiftId).groupIds.contains(groupId)) {
         dataController.addGrouop(widget.shiftId, groupId);
       }
@@ -222,7 +220,7 @@ class EditMemberPart extends StatelessWidget {
               child: Column(
                 children: [
                   StringFormField(
-                    label: 'Name',
+                    hintText: 'Name',
                     initialText: member.name,
                     onSaved: (value) {
                       if (value == null) {
@@ -233,7 +231,7 @@ class EditMemberPart extends StatelessWidget {
                   ),
                   StringFormField(
                     initialText: member.description,
-                    label: 'Description',
+                    hintText: 'Description',
                     onSaved: (value) {
                       if (value == null) {
                         return;
@@ -270,9 +268,8 @@ class EditMemberPart extends StatelessWidget {
                                   return;
                                 }
                                 if (value) {
-                                  dataController.data.vacancyData.saveTemp();
-                                  dataController.tempVacancy = false;
                                   dataController
+                                      .saveTempVacancy()
                                       .addVacancy(memberId, vacancyId)
                                       .notify();
                                 }
@@ -281,27 +278,59 @@ class EditMemberPart extends StatelessWidget {
                             }
                             Future<String?> vacancyId = showDialog<String>(
                                 context: context,
-                                builder: (BuildContext context) => SelectDialog(
-                                      ids: otherVacancies.map((e) => e.id),
-                                      titles: otherVacancies.map((e) => e.name),
-                                      subtitles: otherVacancies
-                                          .map((e) => getSubtitle(e)),
-                                      newEntity: true,
-                                      newEntityText: 'New Vacation',
-                                    ));
+                                builder: (BuildContext context) {
+                                  List<SimpleDialogOption> children = [];
+                                  children.add(SimpleDialogOption(
+                                    onPressed: () {
+                                      Navigator.of(context).pop(defaultId);
+                                    },
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('New Vacation'),
+                                    ),
+                                  ));
+                                  children.addAll(otherVacancies.map(
+                                    (e) => SimpleDialogOption(
+                                      onPressed: () {
+                                        Navigator.of(context).pop(e.id);
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Text(e.name),
+                                      ),
+                                    ),
+                                  ));
+                                  return SimpleDialog(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 24),
+                                    children: children,
+                                  );
+                                });
                             vacancyId.then((id) {
-                              if (id == null) {
-                                return;
-                              }
-                              if (member.vacancyIds.contains(id)) {
+                              if (id == null ||
+                                  member.vacancyIds.contains(id)) {
                                 return;
                               }
                               if (id == defaultId) {
-                                id = genId();
+                                String newId = genId();
+                                Future<bool?> saved = showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => EditVacancyDialog(
+                                          vacancyId: newId,
+                                        ));
+                                saved.then((value) {
+                                  if (value == null) {
+                                    return;
+                                  }
+                                  if (value) {
+                                    dataController
+                                        .saveTempVacancy()
+                                        .addVacancy(memberId, newId)
+                                        .notify();
+                                  }
+                                });
+                                return;
                               }
-                              dataController.getVacancy(id);
-                              dataController.data.vacancyData.saveTemp();
-                              dataController.tempVacancy = false;
                               dataController.addVacancy(memberId, id).notify();
                             });
                           },
@@ -331,9 +360,7 @@ class EditMemberPart extends StatelessWidget {
                           return;
                         }
                         if (value) {
-                          dataController.data.vacancyData.saveTemp();
-                          dataController.tempVacancy = false;
-                          dataController.notify();
+                          dataController.saveTempVacancy().notify();
                         }
                       });
                     },
@@ -361,6 +388,7 @@ class EditGroupPart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var sliderFormFieldKey = GlobalKey<FormFieldState<double>>();
     return Form(
       key: formKey,
       child: Consumer<DataController>(
@@ -374,7 +402,7 @@ class EditGroupPart extends StatelessWidget {
                   children: [
                     StringFormField(
                       initialText: group.name,
-                      label: 'Name',
+                      hintText: 'Name',
                       onSaved: (value) {
                         if (value == null) {
                           return;
@@ -384,7 +412,7 @@ class EditGroupPart extends StatelessWidget {
                     ),
                     StringFormField(
                       initialText: group.description,
-                      label: 'Description',
+                      hintText: 'Description',
                       onSaved: (value) {
                         if (value == null) {
                           return;
@@ -392,18 +420,24 @@ class EditGroupPart extends StatelessWidget {
                         group.description = value;
                       },
                     ),
-                    IntSliderFormField(
-                      initialInt: group.memberIds.length,
-                      max: group.memberIds.length,
-                      label: "Maximum number of members available at onece",
-                      onSaved: (newValue) {
-                        if (newValue == null) {
-                          return;
-                        }
-                        group.maximumAvailable = newValue.round();
-                      },
-                    ),
                   ],
+                ),
+              ),
+              const ContentDivider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: IntSliderFormField(
+                  formFieldKey: sliderFormFieldKey,
+                  context: context,
+                  initialInt: group.memberIds.length,
+                  max: group.memberIds.length,
+                  label: "Maximum Available at Once",
+                  onSaved: (newValue) {
+                    if (newValue == null) {
+                      return;
+                    }
+                    group.maximumAvailable = newValue.round();
+                  },
                 ),
               ),
               const ContentDivider(),
@@ -438,7 +472,8 @@ class EditGroupPart extends StatelessWidget {
                                           ],
                                         ));
                               } else {
-                                Future<String?> memberId = showDialog<String>(
+                                Future<Set<String>?> newMemberIds =
+                                    showDialog<Set<String>>(
                                   context: context,
                                   builder: (BuildContext context) =>
                                       SelectDialog(
@@ -446,22 +481,21 @@ class EditGroupPart extends StatelessWidget {
                                       (e) => e.id,
                                     ),
                                     titles: otherMembers.map((e) => e.name),
-                                    subtitles: otherMembers.map((e) {
-                                      if (e.description == "") {
-                                        return null;
-                                      }
-                                      return e.description;
-                                    }),
-                                    newEntity: false,
+                                    subtitles: otherMembers.map((e) =>
+                                        (e.description == '')
+                                            ? null
+                                            : e.description),
                                   ),
                                 );
-                                memberId.then((id) {
-                                  if (id == null) {
+                                newMemberIds.then((ids) {
+                                  if (ids == null) {
                                     return;
                                   }
                                   dataController
-                                      .addMemberToGroup(groupId, id)
-                                      .notify();
+                                      .getGroup(groupId)
+                                      .memberIds
+                                      .addAll(ids);
+                                  dataController.notify();
                                 });
                               }
                             },
@@ -478,7 +512,14 @@ class EditGroupPart extends StatelessWidget {
                       onTap: (context) {
                         onMemberTap(member.id);
                       },
-                      removeEntity: dataController.removeMemberFromGroup,
+                      removeEntity: (groupId, memberId) {
+                        if (sliderFormFieldKey.currentState != null) {
+                          changeIntSliderFormFieldState(
+                              sliderFormFieldKey.currentState!, -1);
+                        }
+                        return dataController.removeMemberFromGroup(
+                            groupId, memberId);
+                      },
                       deletable: true,
                       deleteEntity: dataController.deleteMember,
                     );

@@ -28,23 +28,36 @@ class _EditPageState extends State<EditPage> {
           builder: (context, dataController, child) => TextField(
             decoration: InputDecoration(
               border: const OutlineInputBorder(borderSide: BorderSide.none),
-              hintText: dataController.data.shiftData.defaultObject.name,
+              hintText: dataController.data.shiftData.defaultObject.title,
             ),
             controller: TextEditingController(
-                text: dataController.getShift(widget.shiftId).name),
+                text: dataController.getShift(widget.shiftId).title),
             style: Theme.of(context).textTheme.titleLarge,
             onSubmitted: (value) {
-              dataController.getShift(widget.shiftId).name = value;
-              dataController.saveTemp().notify().flush();
+              dataController.getShift(widget.shiftId).title = value;
+              dataController.saveTempShift().notify().flush();
             },
           ),
         ),
         actions: [
           TextButton(
               onPressed: () {
-                Provider.of<DataController>(context, listen: false)
-                    .saveTemp()
-                    .generateShift(widget.shiftId);
+                try {
+                  Provider.of<DataController>(context, listen: false)
+                      .saveTempShift()
+                      .resetLoads()
+                      .generateShift(widget.shiftId);
+                } catch (error) {
+                  if (error is ShiftWorkError) {
+                    informUser(context,
+                        title: 'Error', content: error.description);
+                  } else {
+                    informUser(context,
+                        title: 'Error',
+                        content: "I'm sorry. Something went wrong.\n$error");
+                  }
+                  return;
+                }
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => ShowPage(widget.shiftId)));
               },
@@ -100,7 +113,7 @@ class _EditPageState extends State<EditPage> {
                     informUser(context, title: 'No Group Exists');
                     return;
                   }
-                  Future<String?> groupId = showDialog<String>(
+                  Future<Set<String>?> newGroupIds = showDialog<Set<String>>(
                       context: context,
                       builder: (context) {
                         Iterable<Group> groups = dataController
@@ -111,16 +124,21 @@ class _EditPageState extends State<EditPage> {
                               (e) => dataController.getGroup(e),
                             );
                         return SelectDialog(
-                            ids: groups.map((e) => e.id),
-                            titles: groups.map((e) => e.name),
-                            subtitles: groups.map((e) => e.description),
-                            newEntity: false);
+                          ids: groups.map((e) => e.id),
+                          titles: groups.map((e) => e.name),
+                          subtitles: groups.map((e) =>
+                              (e.description == '') ? null : e.description),
+                        );
                       });
-                  groupId.then((value) {
-                    if (value == null) {
+                  newGroupIds.then((ids) {
+                    if (ids == null) {
                       return;
                     }
-                    dataController.addGrouop(widget.shiftId, value).notify();
+                    dataController
+                        .getShift(widget.shiftId)
+                        .groupIds
+                        .addAll(ids);
+                    dataController.notify();
                   });
                 },
                 label: 'Select Group'));
@@ -169,7 +187,7 @@ class _EditPageState extends State<EditPage> {
                     informUser(context, title: 'No Member Exists');
                     return;
                   }
-                  Future<String?> memberId = showDialog<String>(
+                  Future<Set<String>?> newMemberIds = showDialog<Set<String>>(
                       context: context,
                       builder: (context) {
                         Iterable<Member> members = dataController
@@ -180,16 +198,21 @@ class _EditPageState extends State<EditPage> {
                               (e) => dataController.getMember(e),
                             );
                         return SelectDialog(
-                            ids: members.map((e) => e.id),
-                            titles: members.map((e) => e.name),
-                            subtitles: members.map((e) => e.description),
-                            newEntity: false);
+                          ids: members.map((e) => e.id),
+                          titles: members.map((e) => e.name),
+                          subtitles: members.map((e) =>
+                              (e.description == '') ? null : e.description),
+                        );
                       });
-                  memberId.then((value) {
-                    if (value == null) {
+                  newMemberIds.then((ids) {
+                    if (ids == null) {
                       return;
                     }
-                    dataController.addMember(widget.shiftId, value).notify();
+                    dataController
+                        .getShift(widget.shiftId)
+                        .memberIds
+                        .addAll(ids);
+                    dataController.notify();
                   });
                 },
                 label: 'Select Member'));

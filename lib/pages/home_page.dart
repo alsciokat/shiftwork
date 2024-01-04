@@ -140,104 +140,101 @@ class ShiftCard extends StatelessWidget {
           },
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Consumer<DataController>(
-                          builder: (context, dataController, child) => Text(
-                                dataController.getShift(shiftId).name,
-                                style:
-                                    Theme.of(context).textTheme.headlineLarge,
-                              )),
-                      Expanded(child: Container()),
-                      MenuAnchor(
-                          builder: (context, controller, child) => IconButton(
-                              onPressed: () {
-                                if (controller.isOpen) {
-                                  controller.close();
-                                } else {
-                                  controller.open(
-                                      position: const Offset(-20, 45));
-                                }
-                              },
-                              icon: const Icon(Icons.more_vert)),
-                          menuChildren: [
-                            MenuItemButton(
+            child: Consumer<DataController>(
+                builder: (context, dataController, child) {
+              String memberNames = dataController
+                  .getShift(shiftId)
+                  .memberIds
+                  .map((id) => dataController.getMember(id).name)
+                  .join(", ");
+              if (memberNames == "") {
+                memberNames = "No Members";
+              }
+              String workNames = dataController
+                  .getShift(shiftId)
+                  .workIds
+                  .map((id) => dataController.getWork(id).name)
+                  .join(", ");
+              if (workNames == "") {
+                workNames = "No Works";
+              }
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Text(
+                          dataController.getShift(shiftId).title,
+                          style: Theme.of(context).textTheme.headlineLarge,
+                        ),
+                        Expanded(child: Container()),
+                        MenuAnchor(
+                            builder: (context, controller, child) => IconButton(
                                 onPressed: () {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                            title: const Text('Delete Shift'),
-                                            content: const Text(
-                                                'Are you sure you want to delete this shift?'),
-                                            actions: [
-                                              TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context)
-                                                          .pop(),
-                                                  child: const Text('Cancel')),
-                                              TextButton(
-                                                  onPressed: () {
-                                                    Provider.of<DataController>(
-                                                            context,
-                                                            listen: false)
-                                                        .deleteShift(shiftId)
-                                                        .notify()
-                                                        .flush();
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                  child: const Text(
-                                                    'Delete',
-                                                    style: TextStyle(
-                                                        color: Colors.red),
-                                                  ))
-                                            ],
-                                          ));
+                                  if (controller.isOpen) {
+                                    controller.close();
+                                  } else {
+                                    controller.open(
+                                        position: const Offset(-20, 45));
+                                  }
                                 },
-                                child: const Text('Delete'))
-                          ]),
-                    ],
+                                icon: const Icon(Icons.more_vert)),
+                            menuChildren: [
+                              MenuItemButton(
+                                  onPressed: () {
+                                    showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                              title: const Text('Delete Shift'),
+                                              content: const Text(
+                                                  'Are you sure you want to delete this shift?'),
+                                              actions: [
+                                                TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(context)
+                                                            .pop(),
+                                                    child:
+                                                        const Text('Cancel')),
+                                                TextButton(
+                                                    onPressed: () {
+                                                      Provider.of<DataController>(
+                                                              context,
+                                                              listen: false)
+                                                          .deleteShift(shiftId)
+                                                          .notify()
+                                                          .flush();
+                                                      Navigator.of(context)
+                                                          .pop();
+                                                    },
+                                                    child: const Text(
+                                                      'Delete',
+                                                      style: TextStyle(
+                                                          color: Colors.red),
+                                                    ))
+                                              ],
+                                            ));
+                                  },
+                                  child: const Text('Delete'))
+                            ]),
+                      ],
+                    ),
                   ),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.chevron_right),
-                  title: const Text("Members"),
-                  subtitle: Consumer<DataController>(
-                      builder: (context, dataController, child) => Text(() {
-                            final String str = dataController
-                                .getMemberNames(
-                                    dataController.getShift(shiftId).memberIds)
-                                .join(", ");
-                            if (str == "") {
-                              return "No Members";
-                            } else {
-                              return str;
-                            }
-                          }())),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.chevron_right),
-                  title: const Text("Works"),
-                  subtitle: Consumer<DataController>(
-                      builder: (context, dataController, child) => Text(() {
-                            final String str = dataController
-                                .getWorkNames(
-                                    dataController.getShift(shiftId).workIds)
-                                .join(", ");
-                            if (str == "") {
-                              return "No Works";
-                            } else {
-                              return str;
-                            }
-                          }())),
-                ),
-              ],
-            ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.chevron_right),
+                    title: const Text("Members"),
+                    subtitle: Text(memberNames),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.chevron_right),
+                    title: const Text("Works"),
+                    subtitle: Text(workNames),
+                  ),
+                ],
+              );
+            }),
           ),
         ),
       ),

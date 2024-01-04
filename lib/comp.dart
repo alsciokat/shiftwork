@@ -5,76 +5,100 @@ import 'core.dart';
 import 'data.dart';
 
 class StringFormField extends StatelessWidget {
-  final String? initialText;
-  final String? hintText;
-  final String? label;
+  final GlobalKey<FormFieldState<String>>? formKey;
+  final String? initialText, hintText, label;
   final bool? autofocus;
-  final void Function(String text)? onChanged;
-  final void Function(String? text)? onSaved;
-
-  const StringFormField({
-    super.key,
-    this.initialText,
-    this.hintText,
-    this.label,
-    this.autofocus,
-    this.onChanged,
-    this.onSaved,
-  });
+  final void Function(String? text) onSaved;
+  const StringFormField(
+      {super.key,
+      this.formKey,
+      this.initialText,
+      this.hintText,
+      this.label,
+      this.autofocus,
+      required this.onSaved});
 
   @override
   Widget build(BuildContext context) {
-    Text? labelWidget;
-    if (label != null) {
-      labelWidget = Text(label!);
-    }
+    // FocusNode focusNode = FocusNode();
+    TextEditingController controller = TextEditingController(text: initialText);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
-        key: key,
-        initialValue: initialText,
-        decoration: InputDecoration(label: labelWidget, hintText: hintText),
+        key: formKey,
+        controller: controller,
+        // focusNode: focusNode,
+        decoration: InputDecoration(
+          label: (label == null) ? null : Text(label!),
+          hintText: hintText,
+        ),
+        style: Theme.of(context).textTheme.titleMedium,
         autofocus: autofocus ?? false,
-        onChanged: (value) {
-          if (onChanged != null) {
-            onChanged!(value);
-          }
+        onSaved: (newValue) {
+          onSaved(newValue);
         },
-        onSaved: onSaved,
       ),
     );
   }
 }
 
+// class SuffixIcon extends StatelessWidget {
+//   final TextEditingController controller;
+//   final FocusNode focusNode;
+
+//   const SuffixIcon(
+//       {super.key, required this.controller, required this.focusNode});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (controller.text.isEmpty) {
+//       return const SizedBox(
+//         width: 0,
+//       );
+//     }
+//     return IconButton(
+//         onPressed: () {
+//           controller.clear();
+//           focusNode.requestFocus();
+//         },
+//         icon: const Icon(Icons.clear));
+//   }
+// }
+
 DateFormat dateFormat = DateFormat("EEE, MMM d, yyyy");
 DateFormat timeFormat = DateFormat('h:mm a');
 
-void changeStartDateTimeFormFieldState(
+Duration? changeStartDateTimeFormFieldState(
     FormFieldState<DateTime?> startDateTimeFormFieldState,
     DateTime beforeEndDateTime,
     DateTime afterEndDateTime) {
   if (startDateTimeFormFieldState.value == null) {
-    return;
+    return null;
   }
   Duration duration =
       beforeEndDateTime.difference(startDateTimeFormFieldState.value!);
   if (afterEndDateTime.isBefore(startDateTimeFormFieldState.value!)) {
     startDateTimeFormFieldState.didChange(afterEndDateTime.subtract(duration));
+    return duration;
   }
+  return afterEndDateTime.difference(startDateTimeFormFieldState.value!);
 }
 
-void changeEndDateTimeFormFieldState(
+Duration? changeEndDateTimeFormFieldState(
     FormFieldState<DateTime?> endDateTimeFormFieldState,
     DateTime beforeStartDateTime,
     DateTime afterStartDateTime) {
   if (endDateTimeFormFieldState.value == null) {
-    return;
+    return null;
   }
   Duration duration =
       endDateTimeFormFieldState.value!.difference(beforeStartDateTime);
   if (endDateTimeFormFieldState.value!.isBefore(afterStartDateTime)) {
     endDateTimeFormFieldState.didChange(afterStartDateTime.add(duration));
+    return duration;
   }
+  return endDateTimeFormFieldState.value!.difference(afterStartDateTime);
 }
 
 class DateTimeFormField extends FormField<DateTime> {
@@ -102,8 +126,9 @@ class DateTimeFormField extends FormField<DateTime> {
             }
 
             children.add(Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                InkWell(
+                GestureDetector(
                     onTap: () {
                       final Future<DateTime?> date = showDatePicker(
                         context: state.context,
@@ -125,18 +150,15 @@ class DateTimeFormField extends FormField<DateTime> {
                         state.didChange(dateTime);
                       });
                     },
-                    child: SizedBox(
-                      width: 170,
-                      child: Padding(
-                        padding:
-                            const EdgeInsets.only(left: 8, top: 8, bottom: 8),
-                        child: Text(
-                          dateFormat.format(state.value ?? initialDateTime),
-                          style: Theme.of(state.context).textTheme.bodyLarge,
-                        ),
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                      child: Text(
+                        dateFormat.format(state.value ?? initialDateTime),
+                        style: Theme.of(state.context).textTheme.bodyLarge,
                       ),
                     )),
-                InkWell(
+                GestureDetector(
                     onTap: () {
                       final Future<TimeOfDay?> time = showTimePicker(
                         context: state.context,
@@ -159,8 +181,8 @@ class DateTimeFormField extends FormField<DateTime> {
                       });
                     },
                     child: Padding(
-                      padding: const EdgeInsets.only(
-                          left: 24.0, right: 8, top: 8, bottom: 8),
+                      padding:
+                          const EdgeInsets.only(left: 8, top: 8, bottom: 8),
                       child: Text(
                           timeFormat.format(state.value ?? initialDateTime),
                           style: Theme.of(state.context).textTheme.bodyLarge),
@@ -176,25 +198,210 @@ class DateTimeFormField extends FormField<DateTime> {
         );
 }
 
-class IntSliderFormField extends FormField<double> {
-  final int? min;
+void changeNumFormFieldState(
+    FormFieldState<String> numFormFieldState, Duration duration) {
+  numFormFieldState.didChange(
+      (duration.inHours + ((duration.inMinutes % 60) / 60)).toStringAsFixed(1));
+}
+
+class NumFormField extends StatelessWidget {
+  final GlobalKey<FormFieldState<String>> formFieldKey;
+  final num initialNum;
+  final int min;
   final int max;
   final String label;
-  IntSliderFormField({
+  final bool intOnly;
+  final void Function(num value)? onSaved;
+
+  const NumFormField(
+      {super.key,
+      required this.formFieldKey,
+      required this.initialNum,
+      this.min = 1,
+      required this.max,
+      required this.label,
+      this.intOnly = false,
+      this.onSaved});
+
+  @override
+  Widget build(BuildContext context) {
+    TextEditingController controller =
+        TextEditingController(text: initialNum.toStringAsFixed(1));
+    TextInputType textInputType;
+    if (intOnly) {
+      textInputType = TextInputType.number;
+    } else {
+      textInputType = const TextInputType.numberWithOptions(decimal: true);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+              flex: 2,
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium,
+              )),
+          SizedBox(
+            width: 90,
+            height: 50,
+            child: TextFormField(
+              key: formFieldKey,
+              controller: controller,
+              keyboardType: textInputType,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              strutStyle: const StrutStyle(height: 1.1, forceStrutHeight: true),
+              textAlign: TextAlign.center,
+              textAlignVertical: TextAlignVertical.top,
+              showCursor: false,
+              cursorWidth: 0,
+              selectionControls: EmptyTextSelectionControls(),
+              onTap: () {
+                controller.selection = TextSelection(
+                    baseOffset: 0, extentOffset: controller.text.length);
+              },
+              onChanged: (value) {
+                if (value == '') {
+                  return;
+                }
+                num? numValue;
+                if (intOnly) {
+                  numValue = int.tryParse(value);
+                } else {
+                  numValue = double.tryParse(value);
+                }
+                if (numValue == null) {
+                  informUser(context, title: 'Invalid Input');
+                  controller.text = initialNum.toString();
+                  return;
+                }
+                if (numValue < min || numValue > max) {
+                  if (numValue < min) {
+                    informUser(context, title: 'Too Small Number');
+                  } else {
+                    informUser(context, title: 'Too Large Number');
+                  }
+                  controller.text = initialNum.toString();
+                  return;
+                }
+              },
+              validator: (value) {
+                if (value == null) {
+                  controller.text = initialNum.toString();
+                }
+                return null;
+              },
+              onSaved: (newValue) {
+                if (onSaved == null) {
+                  return;
+                }
+                num newNumValue;
+                if (intOnly) {
+                  newNumValue = int.parse(newValue!);
+                } else {
+                  newNumValue = double.parse(newValue!);
+                }
+                onSaved!(newNumValue);
+              },
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+void changeIntSliderFormFieldState(
+    FormFieldState<double> intSliderFormFieldState, int delta) {
+  if (intSliderFormFieldState.value == null) {
+    return;
+  }
+  if (delta < 0 && intSliderFormFieldState.value! + delta >= 0) {
+    intSliderFormFieldState.didChange(intSliderFormFieldState.value! + delta);
+  }
+}
+
+class IntSliderFormField extends StatelessWidget {
+  final GlobalKey<FormFieldState<double>> formFieldKey;
+  final BuildContext context;
+  final int initialInt;
+  final int min;
+  final int max;
+  final String label;
+  final void Function(double? value) onSaved;
+  const IntSliderFormField({
     super.key,
-    required int initialInt,
-    this.min,
+    required this.formFieldKey,
+    required this.context,
+    required this.initialInt,
+    this.min = 0,
     required this.max,
     required this.label,
+    required this.onSaved,
+  });
+
+  String getLabel(double value) {
+    if (value.round() == max) {
+      return 'max';
+    }
+    return value.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (min > max) {
+      throw ShiftWorkError('Minimum is larger than maximum');
+    }
+
+    int division = (max - min);
+    if (max - min == 0) {
+      division = 1;
+    }
+    bool disabled = false;
+    double initialValue = initialInt.toDouble();
+    if (initialInt < min || max < initialInt) {
+      initialValue = min.toDouble();
+      disabled = true;
+    }
+
+    return _IntSliderFormField(
+      key: formFieldKey,
+      context: context,
+      initialValue: initialValue,
+      min: min,
+      max: max,
+      division: division,
+      label: label,
+      disabled: disabled,
+      getLabel: getLabel,
+      onSaved: onSaved,
+    );
+  }
+}
+
+class _IntSliderFormField extends FormField<double> {
+  _IntSliderFormField({
+    super.key,
+    required BuildContext context,
+    required double initialValue,
+    required int min,
+    required int max,
+    required int division,
+    required String label,
+    required bool disabled,
+    required String Function(double value) getLabel,
     super.onSaved,
   }) : super(
-            initialValue: initialInt.toDouble(),
+            initialValue: initialValue,
             builder: (FormFieldState<double> state) {
-              String getLabel(double value) {
-                if (value.round() == max) {
-                  return 'max';
-                }
-                return value.toString();
+              void Function(double value)? onChanged;
+
+              if (max > 0) {
+                onChanged = (value) {
+                  state.didChange(value);
+                };
               }
 
               return Column(
@@ -202,16 +409,14 @@ class IntSliderFormField extends FormField<double> {
                 children: [
                   Text(
                     label,
-                    style: Theme.of(state.context).textTheme.bodyLarge,
+                    style: Theme.of(state.context).textTheme.labelLarge,
                   ),
                   Slider(
-                    value: (state.value ?? initialInt).toDouble(),
+                    value: state.value ?? initialValue,
                     max: max.toDouble(),
-                    divisions: (max <= 0) ? 1 : max,
-                    label: getLabel(state.value ?? initialInt.toDouble()),
-                    onChanged: (value) {
-                      state.didChange(value);
-                    },
+                    divisions: division,
+                    label: getLabel(state.value ?? initialValue),
+                    onChanged: onChanged,
                   )
                 ],
               );
@@ -377,42 +582,25 @@ void informUser(BuildContext context, {String? title, String? content}) {
 class SelectDialog extends StatefulWidget {
   final Iterable<String> ids, titles;
   final Iterable<String?> subtitles;
-  final bool newEntity;
-  final String? newEntityText;
 
-  const SelectDialog(
-      {super.key,
-      required this.ids,
-      required this.titles,
-      required this.subtitles,
-      required this.newEntity,
-      this.newEntityText});
+  const SelectDialog({
+    super.key,
+    required this.ids,
+    required this.titles,
+    required this.subtitles,
+  });
 
   @override
   State<SelectDialog> createState() => _SelectDialogState();
 }
 
 class _SelectDialogState extends State<SelectDialog> {
-  late String radioValue;
-  late int listLength;
-  late int indexShift;
-
-  @override
-  void initState() {
-    if (widget.newEntity) {
-      radioValue = defaultId;
-      listLength = widget.ids.length + 1;
-      indexShift = 1;
-    } else {
-      radioValue = widget.ids.first;
-      listLength = widget.ids.length;
-      indexShift = 0;
-    }
-    super.initState();
-  }
+  Set<String> selectedIds = {};
 
   @override
   Widget build(BuildContext context) {
+    double contentHeight =
+        (59.0 * widget.ids.length < 800) ? 59.0 * widget.ids.length : 800.0;
     return AlertDialog(
       title: const Text('Select'),
       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -420,60 +608,40 @@ class _SelectDialogState extends State<SelectDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Divider(),
-          ListView.builder(
-              shrinkWrap: true,
-              itemCount: listLength,
-              itemBuilder: (context, index) {
-                if (index == 0 && widget.newEntity) {
-                  return InkWell(
-                    onTap: () {
-                      setState(() {
-                        radioValue = defaultId;
-                      });
-                    },
-                    child: ListTile(
-                        contentPadding: const EdgeInsets.all(0),
-                        horizontalTitleGap: 0,
-                        leading: Radio<String>(
-                          value: defaultId,
-                          groupValue: radioValue,
-                          onChanged: (value) {
-                            setState(() {
-                              radioValue = value ?? defaultId;
-                            });
-                          },
-                        ),
-                        title: Text(widget.newEntityText ?? 'Add New Entity')),
-                  );
-                }
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      radioValue = widget.ids.elementAt(index - indexShift);
-                    });
-                  },
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(0),
-                    horizontalTitleGap: 0,
-                    leading: Radio<String>(
-                      value: widget.ids.elementAt(index - indexShift),
-                      groupValue: radioValue,
-                      onChanged: (value) {
+          SizedBox(
+            height: contentHeight,
+            child: ListView.builder(
+                itemCount: widget.ids.length,
+                itemBuilder: (context, index) {
+                  String id = widget.ids.elementAt(index);
+                  return GestureDetector(
+                      onTap: () {
                         setState(() {
-                          radioValue = value ?? defaultId;
+                          if (selectedIds.contains(id)) {
+                            selectedIds.remove(id);
+                          } else {
+                            selectedIds.add(id);
+                          }
                         });
                       },
-                    ),
-                    title: Text(widget.titles.elementAt(index - indexShift)),
-                    subtitle: widget.subtitles.map((e) {
-                      if (e == null) {
-                        return null;
-                      }
-                      return Text(e);
-                    }).elementAt(index - indexShift),
-                  ),
-                );
-              }),
+                      child: CheckboxListTile(
+                          contentPadding: const EdgeInsets.only(left: 10),
+                          value: selectedIds.contains(id),
+                          onChanged: (value) {
+                            setState(() {
+                              if (selectedIds.contains(id)) {
+                                selectedIds.remove(id);
+                              } else {
+                                selectedIds.add(id);
+                              }
+                            });
+                          },
+                          title: Text(widget.titles.elementAt(index)),
+                          subtitle: widget.subtitles
+                              .map((e) => (e == null) ? null : Text(e))
+                              .elementAt(index)));
+                }),
+          ),
           const Divider(),
         ],
       ),
@@ -485,9 +653,9 @@ class _SelectDialogState extends State<SelectDialog> {
             child: const Text('Cancel')),
         TextButton(
             onPressed: () {
-              Navigator.of(context).pop(radioValue);
+              Navigator.of(context).pop(selectedIds);
             },
-            child: const Text('Select'))
+            child: const Text('Confirm'))
       ],
     );
   }

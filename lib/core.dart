@@ -17,6 +17,58 @@ String genId() {
   return id;
 }
 
+class DateTimeInterval {
+  DateTime _start;
+  DateTime _end;
+  bool allowZeroInterval = false;
+
+  DateTimeInterval(DateTime start, DateTime end,
+      {this.allowZeroInterval = false})
+      : _start = start,
+        _end = end;
+
+  DateTime get start {
+    return _start;
+  }
+
+  DateTime get end {
+    return _end;
+  }
+
+  set start(DateTime value) {
+    if (value.isAfter(_end) ||
+        (value.isAtSameMomentAs(_end) && !allowZeroInterval)) {
+      Duration intervalLength = _end.difference(_start);
+      _end = value.add(intervalLength);
+    }
+    _start = value;
+  }
+
+  set end(DateTime value) {
+    if (value.isBefore(_start) ||
+        (value.isAtSameMomentAs(_start) && !allowZeroInterval)) {
+      Duration intervalLength = _end.difference(_start);
+      _start = value.subtract(intervalLength);
+    }
+    _end = value;
+  }
+
+  Duration get duration {
+    return _end.difference(_start);
+  }
+
+  bool intersect(DateTimeInterval other) {
+    if (((other._start.isAfter(_start) ||
+                other._start.isAtSameMomentAs(_start)) &&
+            other._start.isBefore(_end)) ||
+        (other._end.isAfter(_start) &&
+            (other._end.isBefore(_end) || other._end.isAtSameMomentAs(_end)))) {
+      return true;
+    }
+    return false;
+  }
+}
+
 class ShiftWorkError extends Error {
   String description;
   ShiftWorkError(String? description)
@@ -26,40 +78,37 @@ class ShiftWorkError extends Error {
 abstract class IObject {
   static String nameDefault = 'Unnamed';
   final String id;
-  String name;
 
-  IObject({required this.id}) : name = nameDefault;
+  IObject({required this.id});
+
+  IObject fromJson(String id, Map<String, dynamic> objectJson);
 
   dynamic toJson();
   IObject create({required String id});
 }
 
 // A wrapper object for each DataType
-class ObjectData {
-  static List<String> objectOrderDefault = [];
-  static Map<String, IObject> objectMapDefault = {};
-  IObject tempObject;
+class ObjectData<T extends IObject> {
+  T tempObject;
 
   List<String> objectOrder;
-  IObject defaultObject;
-  Map<String, IObject> objectMap;
+  T defaultObject;
+  Map<String, T> objectMap;
 
-  ObjectData(
-      {required this.defaultObject,
-      List<String>? objectOrder,
-      Map<String, IObject>? objectMap})
-      : objectOrder = objectOrder ?? List.from(objectOrderDefault),
-        objectMap = objectMap ?? Map.from(objectMapDefault),
-        tempObject = defaultObject.create(id: 'temp');
+  ObjectData({
+    required this.defaultObject,
+    required this.objectOrder,
+    required this.objectMap,
+  }) : tempObject = defaultObject.create(id: defaultId) as T;
 
-  IObject create(String id) {
-    objectMap[id] = defaultObject.create(id: id);
+  T create(String id) {
+    objectMap[id] = defaultObject.create(id: id) as T;
     objectOrder.add(id);
     return objectMap[id]!;
   }
 
-  IObject getTemp(String id) {
-    tempObject = defaultObject.create(id: id);
+  T getTemp(String id) {
+    tempObject = defaultObject.create(id: id) as T;
     return tempObject;
   }
 
@@ -69,26 +118,29 @@ class ObjectData {
     return this;
   }
 
-  IObject getById(String id) {
+  T getById(String id) {
     if (!objectMap.keys.contains(id)) {
       throw RangeError('getById: Given Id is not present!');
     }
     return objectMap[id]!;
   }
 
-  IObject getByOrder(int index) {
+  T getByOrder(int index) {
     if (index >= objectOrder.length) {
       throw IndexError.withLength(index, objectOrder.length);
     }
     return getById(objectOrder[index]);
   }
 
-  String getName(String id) {
-    if (!objectMap.keys.contains(id)) {
-      throw RangeError('getName: Given Id is not present!');
-    }
-    return objectMap[id]!.name;
-  }
+  ObjectData.fromJson(
+      {required T defaultObject, required Map<String, dynamic> objectJson})
+      : defaultObject =
+            defaultObject.fromJson(defaultId, objectJson[defaultId]) as T,
+        objectOrder = List<String>.from(objectJson['objectOrder']),
+        objectMap = Map<String, T>.from(objectJson['objectIds'].map((id,
+                value) =>
+            MapEntry<String, T>(id, defaultObject.fromJson(id, value) as T))),
+        tempObject = defaultObject.create(id: defaultId) as T;
 
   Map toJson() => {
         'objectOrder': objectOrder,
@@ -100,11 +152,11 @@ class ObjectData {
 
 // The model of the entire database
 class Data {
-  ObjectData shiftData;
-  ObjectData memberData;
-  ObjectData groupData;
-  ObjectData workData;
-  ObjectData vacancyData;
+  late ObjectData<Shift> shiftData;
+  late ObjectData<Member> memberData;
+  late ObjectData<Group> groupData;
+  late ObjectData<Work> workData;
+  late ObjectData<Vacancy> vacancyData;
 
   Data(
       {required this.shiftData,
@@ -114,74 +166,59 @@ class Data {
       required this.vacancyData});
 
   Data.fromDefault()
-      : shiftData = ObjectData(defaultObject: Shift(id: defaultId)),
-        memberData = ObjectData(defaultObject: Member(id: defaultId)),
-        groupData = ObjectData(defaultObject: Group(id: defaultId)),
-        workData = ObjectData(defaultObject: Work(id: defaultId)),
-        vacancyData = ObjectData(defaultObject: Vacancy(id: defaultId));
+      : shiftData = ObjectData<Shift>(
+            defaultObject: Shift(id: defaultId),
+            objectOrder: [],
+            objectMap: {}),
+        memberData = ObjectData<Member>(
+            defaultObject: Member(id: defaultId),
+            objectOrder: [],
+            objectMap: {}),
+        groupData = ObjectData<Group>(
+            defaultObject: Group(id: defaultId),
+            objectOrder: [],
+            objectMap: {}),
+        workData = ObjectData<Work>(
+            defaultObject: Work(id: defaultId), objectOrder: [], objectMap: {}),
+        vacancyData = ObjectData<Vacancy>(
+            defaultObject: Vacancy(id: defaultId),
+            objectOrder: [],
+            objectMap: {});
 
-  Data updateAll(Map<String, Map> dataJson) {
-    dataJson[DataType.shift.name]?.forEach((key, json) {
-      if (key == 'objectOrder') {
-        shiftData.objectOrder = json;
-      } else if (key == defaultId) {
-        Shift.setDefault(json);
-        shiftData.defaultObject = Shift.fromJson(defaultId, json);
-      } else if (key == 'objectIds') {
-        json.forEach((id, shiftJson) {
-          shiftData.objectMap[id] = Shift.fromJson(id, shiftJson);
-        });
-      }
-    });
-    dataJson[DataType.member.name]?.forEach((key, json) {
-      if (key == 'objectOrder') {
-        memberData.objectOrder = json;
-      } else if (key == defaultId) {
-        Member.setDefault(json);
-        memberData.defaultObject = Member.fromJson(defaultId, json);
-      } else if (key == 'objectIds') {
-        json.forEach((id, memberJson) {
-          memberData.objectMap[id] = Member.fromJson(id, memberJson);
-        });
-      }
-    });
-    dataJson[DataType.group.name]?.forEach((key, json) {
-      if (key == 'objectOrder') {
-        groupData.objectOrder = json;
-      } else if (key == defaultId) {
-        Group.setDefault(json);
-        groupData.defaultObject = Group.fromJson(defaultId, json);
-      } else if (key == 'objectIds') {
-        json.forEach((id, groupJson) {
-          groupData.objectMap[id] = Group.fromJson(id, groupJson);
-        });
-      }
-    });
-    dataJson[DataType.work.name]?.forEach((key, json) {
-      if (key == 'objectOrder') {
-        workData.objectOrder = json;
-      } else if (key == defaultId) {
-        Work.setDefault(json);
-        workData.defaultObject = Work.fromJson(defaultId, json);
-      } else if (key == 'objectIds') {
-        json.forEach((id, workJson) {
-          workData.objectMap[id] = Work.fromJson(id, workJson);
-        });
-      }
-    });
-    dataJson[DataType.vacancy.name]?.forEach((key, json) {
-      if (key == 'objectOrder') {
-        vacancyData.objectOrder = json;
-      } else if (key == defaultId) {
-        Vacancy.setDefault(json);
-        vacancyData.defaultObject = Vacancy.fromJson(defaultId, json);
-      } else if (key == 'objectIds') {
-        json.forEach((id, vacancyJson) {
-          vacancyData.objectMap[id] = Vacancy.fromJson(id, vacancyJson);
-        });
-      }
-    });
-    return this;
+  Data.fromJson(Map<String, dynamic> dataJson) {
+    Map<String, dynamic>? metaShiftJson = dataJson[DataType.shift.name];
+    if (metaShiftJson != null) {
+      Shift.setDefault(metaShiftJson[defaultId]);
+      shiftData = ObjectData<Shift>.fromJson(
+          defaultObject: Shift(id: defaultId), objectJson: metaShiftJson);
+    }
+
+    Map<String, dynamic>? metaMemberJson = dataJson[DataType.member.name];
+    if (metaMemberJson != null) {
+      Member.setDefault(metaMemberJson[defaultId]);
+      memberData = ObjectData<Member>.fromJson(
+          defaultObject: Member(id: defaultId), objectJson: metaMemberJson);
+    }
+    Map<String, dynamic>? metaGroupJson = dataJson[DataType.group.name];
+    if (metaGroupJson != null) {
+      Group.setDefault(metaGroupJson[defaultId]);
+      groupData = ObjectData<Group>.fromJson(
+          defaultObject: Group(id: defaultId), objectJson: metaGroupJson);
+    }
+
+    Map<String, dynamic>? metaWorkJson = dataJson[DataType.work.name];
+
+    if (metaWorkJson != null) {
+      Work.setDefault(metaWorkJson[defaultId]);
+      workData = ObjectData<Work>.fromJson(
+          defaultObject: Work(id: defaultId), objectJson: metaWorkJson);
+    }
+    Map<String, dynamic>? metaVacancyJson = dataJson[DataType.vacancy.name];
+    if (metaVacancyJson != null) {
+      Vacancy.setDefault(metaVacancyJson[defaultId]);
+      vacancyData = ObjectData<Vacancy>.fromJson(
+          defaultObject: Vacancy(id: defaultId), objectJson: metaVacancyJson);
+    }
   }
 
   Map toJson() => {
@@ -193,7 +230,7 @@ class Data {
       };
 }
 
-class Shift implements IObject {
+class Shift extends IObject {
   static String nameDefault = "Untitled";
   static List<String> memberIdsDefault = [];
   static List<String> groupIdsDefault = [];
@@ -203,10 +240,7 @@ class Shift implements IObject {
   static Leniency maximumAvailableLeniencyDefault = Leniency.force;
   static String descriptionDefault = "";
 
-  @override
-  final String id;
-  @override
-  String name;
+  String title;
   List<String> memberIds;
   List<String> groupIds;
   List<String> workIds;
@@ -217,19 +251,19 @@ class Shift implements IObject {
   String description;
 
   Shift(
-      {required this.id,
+      {required super.id,
       String? title,
       List<String>? memberIds,
       List<String>? groupIds,
-      List<String>? workIDs,
+      List<String>? workIds,
       Leniency? fixedMemberLeniency,
       Leniency? fixedGroupLeniency,
       Leniency? maximumAvailableLeniency,
       String? description})
-      : name = title ?? nameDefault,
+      : title = title ?? nameDefault,
         memberIds = memberIds ?? List.from(memberIdsDefault),
         groupIds = groupIds ?? List.from(groupIdsDefault),
-        workIds = workIDs ?? List.from(workIdsDefault),
+        workIds = workIds ?? List.from(workIdsDefault),
         fixedMemberLeniency = fixedMemberLeniency ?? fixedGroupLeniencyDefault,
         fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
         maximumAvailableLeniency =
@@ -243,9 +277,9 @@ class Shift implements IObject {
 
   static setDefault(Map<String, dynamic> shiftJson) {
     nameDefault = shiftJson['title'];
-    memberIdsDefault = shiftJson['memberIds'];
-    groupIdsDefault = shiftJson['groupIds'];
-    workIdsDefault = shiftJson['workIds'];
+    memberIdsDefault = List<String>.from(shiftJson['memberIds']);
+    groupIdsDefault = List<String>.from(shiftJson['groupIds']);
+    workIdsDefault = List<String>.from(shiftJson['workIds']);
     fixedMemberLeniencyDefault =
         Leniency.values[shiftJson['fixedMemberLeniency']];
     fixedGroupLeniencyDefault =
@@ -255,24 +289,28 @@ class Shift implements IObject {
     descriptionDefault = shiftJson['description'];
   }
 
-  Shift.fromJson(this.id, Map<String, dynamic> shiftJson)
-      : name = shiftJson['title'] ?? nameDefault,
-        memberIds = shiftJson['memberIds'] ?? List.from(memberIdsDefault),
-        groupIds = shiftJson['groupIds'] ?? List.from(groupIdsDefault),
-        workIds = shiftJson['workIds'] ?? List.from(workIdsDefault),
-        fixedMemberLeniency = Leniency.values[
-            shiftJson['fixedMemberLeniency'] ??
-                fixedMemberLeniencyDefault.index],
-        fixedGroupLeniency = Leniency.values[
-            shiftJson['fixedGroupLeniency'] ?? fixedGroupLeniencyDefault.index],
-        maximumAvailableLeniency = Leniency.values[
-            shiftJson['maximumAvailableLeniency'] ??
-                maximumAvailableLeniencyDefault.index],
-        description = shiftJson['description'] ?? descriptionDefault;
+  @override
+  Shift fromJson(String id, Map<String, dynamic> objectJson) {
+    return Shift(
+      id: id,
+      title: objectJson['title'] ?? nameDefault,
+      memberIds: List<String>.from(objectJson['memberIds'] ?? memberIdsDefault),
+      groupIds: List<String>.from(objectJson['groupIds'] ?? groupIdsDefault),
+      workIds: List<String>.from(objectJson['workIds'] ?? workIdsDefault),
+      fixedMemberLeniency: Leniency.values[objectJson['fixedMemberLeniency'] ??
+          fixedMemberLeniencyDefault.index],
+      fixedGroupLeniency: Leniency.values[
+          objectJson['fixedGroupLeniency'] ?? fixedGroupLeniencyDefault.index],
+      maximumAvailableLeniency: Leniency.values[
+          objectJson['maximumAvailableLeniency'] ??
+              maximumAvailableLeniencyDefault.index],
+      description: objectJson['description'] ?? descriptionDefault,
+    );
+  }
 
   @override
   Map<String, dynamic> toJson() => {
-        'title': name,
+        'title': title,
         'memberIds': memberIds,
         'groupIds': groupIds,
         'workIds': workIds,
@@ -291,15 +329,12 @@ double tau = 60;
 
 enum GetLoadScheme { plain, fatigue }
 
-class Member implements IObject {
+class Member extends IObject {
   static String nameDefault = 'Unnamed';
   static double preloadDefault = 0;
   static List<String> vacancyIdsDefault = [];
   static String descriptionDefault = "";
 
-  @override
-  final String id;
-  @override
   String name;
   double preload = 0;
   List<String> vacancyIds;
@@ -310,9 +345,10 @@ class Member implements IObject {
   DateTime previousLoadEndDateTime = DateTime(0);
 
   double availablity = 1;
+  List<DateTimeInterval> assignedIntervals = [];
 
   Member(
-      {required this.id,
+      {required super.id,
       String? name,
       List<String>? vacancyIds,
       double? preload,
@@ -373,15 +409,21 @@ class Member implements IObject {
   static setDefault(Map<String, dynamic> memberJson) {
     nameDefault = memberJson['name'];
     preloadDefault = memberJson['preload'];
-    vacancyIdsDefault = memberJson['vacancyIds'];
+    vacancyIdsDefault = List<String>.from(memberJson['vacancyIds']);
     descriptionDefault = memberJson['description'];
   }
 
-  Member.fromJson(this.id, Map<String, dynamic> memberJson)
-      : name = memberJson['name'] ?? nameDefault,
-        preload = memberJson['preload'] ?? preloadDefault,
-        vacancyIds = memberJson['vacancyIds'] ?? List.from(vacancyIdsDefault),
-        description = memberJson['description'] ?? descriptionDefault;
+  @override
+  Member fromJson(String id, Map<String, dynamic> objectJson) {
+    return Member(
+      id: id,
+      name: objectJson['name'] ?? nameDefault,
+      preload: objectJson['preload'] ?? preloadDefault,
+      vacancyIds:
+          List<String>.from(objectJson['vacancyIds'] ?? vacancyIdsDefault),
+      description: objectJson['description'] ?? descriptionDefault,
+    );
+  }
 
   @override
   Map<String, dynamic> toJson() => {
@@ -392,16 +434,13 @@ class Member implements IObject {
       };
 }
 
-class Group implements IObject {
+class Group extends IObject {
   static String nameDefault = 'Unnamed';
   static List<String> memberIdsDefault = [];
   static int maximumAvailableDefault = -1;
   static Leniency maximumAvailableLeniencyDefault = Leniency.inherit;
   static String descriptionDefault = '';
 
-  @override
-  final String id;
-  @override
   String name;
   int maximumAvailable;
   Leniency maximumAvailableLeniency;
@@ -412,7 +451,7 @@ class Group implements IObject {
   int availableNow = 0;
 
   Group(
-      {required this.id,
+      {required super.id,
       String? name,
       List<String>? memberIds,
       int? maximumAvailable,
@@ -432,22 +471,27 @@ class Group implements IObject {
 
   static setDefault(Map<String, dynamic> groupJson) {
     nameDefault = groupJson['name'];
-    memberIdsDefault = groupJson['memberIds'];
+    memberIdsDefault = List<String>.from(groupJson['memberIds']);
     maximumAvailableDefault = groupJson['maximumAvailable'];
     maximumAvailableLeniencyDefault =
         Leniency.values[groupJson['maximumAvailableLeniency']];
     descriptionDefault = groupJson['description'];
   }
 
-  Group.fromJson(this.id, Map<String, dynamic> groupJson)
-      : name = groupJson['name'] ?? nameDefault,
-        memberIds = groupJson['memberIds'] ?? List.from(memberIdsDefault),
-        maximumAvailable =
-            groupJson['maximumAvailable'] ?? maximumAvailableDefault,
-        maximumAvailableLeniency = Leniency.values[
-            groupJson['maximumAvailableLeniency'] ??
+  @override
+  Group fromJson(String id, Map<String, dynamic> objectJson) {
+    return Group(
+        id: id,
+        name: objectJson['name'] ?? nameDefault,
+        memberIds:
+            List<String>.from(objectJson['memberIds'] ?? memberIdsDefault),
+        maximumAvailable:
+            objectJson['maximumAvailable'] ?? maximumAvailableDefault,
+        maximumAvailableLeniency: Leniency.values[
+            objectJson['maximumAvailableLeniency'] ??
                 maximumAvailableLeniencyDefault.index],
-        description = groupJson['description'] ?? descriptionDefault;
+        description: objectJson['description'] ?? descriptionDefault);
+  }
 
   @override
   Map<String, dynamic> toJson() => {
@@ -461,7 +505,7 @@ class Group implements IObject {
 
 enum Leniency { inherit, force, recommend }
 
-class Work implements IObject {
+class Work extends IObject {
   static String nameDefault = "Unnamed";
   static double loadDefault = 1;
   static int numberOfMembersNeededDefault = 1;
@@ -472,18 +516,29 @@ class Work implements IObject {
   static List<String> memberIdsDefault = [];
   static String descriptionDefault = "";
   static DateTime startDateTimeDefault = DateTime.now();
-  static DateTime endDateTimeDefault = DateTime.now();
+  static DateTime endDateTimeDefault =
+      DateTime.now().add(const Duration(hours: 1));
 
-  @override
-  final String id;
-
-  @override
   String name;
 
   double load;
   int numberOfMembersNeeded;
-  DateTime startDateTime;
-  DateTime endDateTime;
+  DateTimeInterval dateTimeInterval;
+  DateTime get startDateTime {
+    return dateTimeInterval.start;
+  }
+
+  set startDateTime(DateTime start) {
+    dateTimeInterval.start = start;
+  }
+
+  DateTime get endDateTime {
+    return dateTimeInterval.end;
+  }
+
+  set endDateTime(DateTime end) {
+    dateTimeInterval.end = end;
+  }
 
   List<String> fixedMemberIds;
   Leniency fixedMemberLeniency;
@@ -494,10 +549,10 @@ class Work implements IObject {
   String description;
 
   Work(
-      {required this.id,
+      {required super.id,
       String? name,
       double? load,
-      int? numberOfMemberNeeded,
+      int? numberOfMembersNeeded,
       DateTime? startDateTime,
       DateTime? endDateTime,
       List<String>? fixedMemberIds,
@@ -509,9 +564,10 @@ class Work implements IObject {
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
         numberOfMembersNeeded =
-            numberOfMemberNeeded ?? numberOfMembersNeededDefault,
-        startDateTime = startDateTime ?? startDateTimeDefault,
-        endDateTime = endDateTime ?? endDateTimeDefault,
+            numberOfMembersNeeded ?? numberOfMembersNeededDefault,
+        dateTimeInterval = DateTimeInterval(
+            startDateTime ?? startDateTimeDefault,
+            endDateTime ?? endDateTimeDefault),
         fixedMemberIds = fixedMemberIds ?? List.from(fixedMemberIdsDefault),
         fixedMemberLeniency = fixedMemberLeniency ?? fixedMemberLeniencyDefault,
         fixedGroupIds = fixedGroupIds ?? List.from(fixedGroupIdsDefault),
@@ -530,32 +586,38 @@ class Work implements IObject {
     numberOfMembersNeededDefault = workJson['numberOfMembersNeeded'];
     startDateTimeDefault = DateTime.parse(workJson['startDateTime']);
     endDateTimeDefault = DateTime.parse(workJson['endDateTime']);
-    fixedMemberIdsDefault = workJson['fixedMemberIds'];
+    fixedMemberIdsDefault = List<String>.from(workJson['fixedMemberIds']);
     fixedMemberLeniencyDefault =
         Leniency.values[workJson['fixedMemberLeniency']];
-    fixedGroupIdsDefault = workJson['fixedGroupIds'];
+    fixedGroupIdsDefault = List<String>.from(workJson['fixedGroupIds']);
     fixedGroupLeniencyDefault = Leniency.values[workJson['fixedGroupLeniency']];
-    memberIdsDefault = workJson['memberIds'];
+    memberIdsDefault = List<String>.from(workJson['memberIds']);
     descriptionDefault = workJson['description'];
   }
 
-  Work.fromJson(this.id, Map<String, dynamic> workJson)
-      : name = workJson['name'] ?? nameDefault,
-        load = workJson['load'] ?? loadDefault,
-        numberOfMembersNeeded =
-            workJson['numberOfMembersNeeded'] ?? numberOfMembersNeededDefault,
-        startDateTime = DateTime.parse(workJson['startDateTime']),
-        endDateTime = DateTime.parse(workJson['endDateTime']),
-        fixedMemberIds =
-            workJson['fixedMemberIds'] ?? List.from(fixedMemberIdsDefault),
-        fixedMemberLeniency = Leniency.values[workJson['fixedMemberLeniency'] ??
-            fixedMemberLeniencyDefault.index],
-        fixedGroupIds =
-            workJson['fixedGroupIds'] ?? List.from(fixedGroupIdsDefault),
-        fixedGroupLeniency = Leniency.values[
-            workJson['fixedGroupLeniency'] ?? fixedGroupLeniencyDefault.index],
-        memberIds = workJson['memberIds'] ?? List.from(memberIdsDefault),
-        description = workJson['description'] ?? descriptionDefault;
+  @override
+  Work fromJson(String id, Map<String, dynamic> objectJson) {
+    return Work(
+        id: id,
+        name: objectJson['name'] ?? nameDefault,
+        load: objectJson['load'] ?? loadDefault,
+        numberOfMembersNeeded:
+            objectJson['numberOfMembersNeeded'] ?? numberOfMembersNeededDefault,
+        startDateTime: DateTime.parse(objectJson['startDateTime']),
+        endDateTime: DateTime.parse(objectJson['endDateTime']),
+        fixedMemberIds: List<String>.from(
+            objectJson['fixedMemberIds'] ?? fixedMemberIdsDefault),
+        fixedMemberLeniency: Leniency.values[
+            objectJson['fixedMemberLeniency'] ??
+                fixedMemberLeniencyDefault.index],
+        fixedGroupIds: List<String>.from(
+            objectJson['fixedGroupIds'] ?? fixedGroupIdsDefault),
+        fixedGroupLeniency: Leniency.values[objectJson['fixedGroupLeniency'] ??
+            fixedGroupLeniencyDefault.index],
+        memberIds:
+            List<String>.from(objectJson['memberIds'] ?? memberIdsDefault),
+        description: objectJson['description'] ?? descriptionDefault);
+  }
 
   @override
   Map<String, dynamic> toJson() => {
@@ -565,7 +627,7 @@ class Work implements IObject {
         'startDateTime': startDateTime.toString(),
         'endDateTime': endDateTime.toString(),
         'fixedMemberIds': fixedMemberIds,
-        'fixedfixedMemberLeniency': fixedMemberLeniency.index,
+        'fixedMemberLeniency': fixedMemberLeniency.index,
         'fixedGroupIds': fixedGroupIds,
         'fixedGroupLeniency': fixedGroupLeniency.index,
         'memberIds': memberIds,
@@ -573,7 +635,7 @@ class Work implements IObject {
       };
 }
 
-class Vacancy implements IObject {
+class Vacancy extends IObject {
   static String nameDefault = "Unnamed";
   static DateTime startDateTimeDefault =
       DateTime.now().copyWith(hour: 0, minute: 0);
@@ -582,25 +644,39 @@ class Vacancy implements IObject {
   static bool isPaidDefault = false;
   static String descriptionDefault = "";
 
-  @override
-  final String id;
-  @override
   String name;
-  DateTime startDateTime;
-  DateTime endDateTime;
+
+  DateTimeInterval dateTimeInterval;
+  DateTime get startDateTime {
+    return dateTimeInterval.start;
+  }
+
+  DateTime get endDateTime {
+    return dateTimeInterval.end;
+  }
+
+  set startDateTime(DateTime dateTime) {
+    dateTimeInterval.start = dateTime;
+  }
+
+  set endDateTime(DateTime dateTime) {
+    dateTimeInterval.end = dateTime;
+  }
+
   bool isPaid;
   String description;
 
   Vacancy(
-      {required this.id,
+      {required super.id,
       String? name,
       DateTime? startDateTime,
       DateTime? endDateTime,
       bool? isPaid,
       String? description})
       : name = name ?? nameDefault,
-        startDateTime = startDateTime ?? startDateTimeDefault,
-        endDateTime = endDateTime ?? endDateTimeDefault,
+        dateTimeInterval = DateTimeInterval(
+            startDateTime ?? startDateTimeDefault,
+            endDateTime ?? endDateTimeDefault),
         isPaid = isPaid ?? isPaidDefault,
         description = description ?? descriptionDefault;
 
@@ -613,13 +689,6 @@ class Vacancy implements IObject {
     return endDateTime.difference(startDateTime);
   }
 
-  bool include(DateTime dateTime) {
-    return (startDateTime.isBefore(dateTime) ||
-            startDateTime.isAtSameMomentAs(dateTime)) &&
-        (endDateTime.isAfter(dateTime) ||
-            endDateTime.isAtSameMomentAs(dateTime));
-  }
-
   static setDefault(Map<String, dynamic> vacancyJson) {
     nameDefault = vacancyJson['name'];
     startDateTimeDefault = DateTime.parse(vacancyJson['startDateTime']);
@@ -628,18 +697,22 @@ class Vacancy implements IObject {
     descriptionDefault = vacancyJson['description'];
   }
 
-  Vacancy.fromJson(this.id, Map<String, dynamic> vacancyJson)
-      : name = vacancyJson['name'] ?? nameDefault,
-        startDateTime = DateTime.parse(vacancyJson['startDateTime']),
-        endDateTime = DateTime.parse(vacancyJson['endDateTime']),
-        isPaid = vacancyJson['isPaid'],
-        description = vacancyJson['description'] ?? descriptionDefault;
+  @override
+  Vacancy fromJson(String id, Map<String, dynamic> objectJson) {
+    return Vacancy(
+        id: id,
+        name: objectJson['name'],
+        startDateTime: DateTime.parse(objectJson['startDateTime']),
+        endDateTime: DateTime.parse(objectJson['endDateTime']),
+        isPaid: objectJson['isPaid'],
+        description: objectJson['description']);
+  }
 
   @override
   Map<String, dynamic> toJson() => {
         'name': name,
         'startDateTime': startDateTime.toString(),
-        'endDataTime': endDateTime.toString(),
+        'endDateTime': endDateTime.toString(),
         'isPaid': isPaid,
         'description': description,
       };

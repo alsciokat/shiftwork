@@ -19,6 +19,8 @@ class _EditWorkPageState extends State<EditWorkPage> {
   final formKey = GlobalKey<FormState>();
   final startDateTimeFormFieldKey = GlobalKey<FormFieldState<DateTime>>();
   final endDateTimeFormFieldKey = GlobalKey<FormFieldState<DateTime>>();
+  final sliderFormFieldKey = GlobalKey<FormFieldState<double>>();
+  final numFormFieldKey = GlobalKey<FormFieldState<String>>();
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   formKey.currentState!.save();
-                  dataController.saveTemp();
+                  dataController.saveTempWork();
                   if (!dataController
                       .getShift(widget.shiftId)
                       .workIds
@@ -55,6 +57,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                   StringFormField(
                     initialText: work.name,
                     hintText: 'Name',
+                    autofocus: true,
                     onSaved: (value) {
                       if (value == null) {
                         return;
@@ -75,7 +78,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                 ],
               ),
             ),
-            Divider(),
+            const ContentDivider(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 30.0),
               child: Column(
@@ -88,38 +91,75 @@ class _EditWorkPageState extends State<EditWorkPage> {
                         if (endDateTimeFormFieldKey.currentState == null) {
                           return;
                         }
-                        changeEndDateTimeFormFieldState(
+                        Duration? duration = changeEndDateTimeFormFieldState(
                             endDateTimeFormFieldKey.currentState!,
                             beforeDateTime,
                             afterDateTime);
+                        if (numFormFieldKey.currentState == null ||
+                            duration == null) {
+                          return;
+                        }
+                        changeNumFormFieldState(
+                            numFormFieldKey.currentState!, duration);
                       },
                       onSaved: (dateTime) {
                         if (dateTime == null) {
                           return;
                         }
                         work.startDateTime = dateTime;
-                        dataController.notify();
                       }),
                   DateTimeFormField(
+                    key: endDateTimeFormFieldKey,
                     initialDateTime: work.endDateTime,
                     label: 'End At',
                     onChanged: (beforeDateTime, afterDateTime) {
                       if (startDateTimeFormFieldKey.currentState == null) {
                         return;
                       }
-                      changeStartDateTimeFormFieldState(
+                      Duration? duration = changeStartDateTimeFormFieldState(
                           startDateTimeFormFieldKey.currentState!,
                           beforeDateTime,
                           afterDateTime);
+                      if (numFormFieldKey.currentState == null ||
+                          duration == null) {
+                        return;
+                      }
+                      changeNumFormFieldState(
+                          numFormFieldKey.currentState!, duration);
                     },
                     onSaved: (dateTime) {
                       if (dateTime == null) {
                         return;
                       }
                       work.endDateTime = dateTime;
-                      dataController.notify();
                     },
                   ),
+                  IntSliderFormField(
+                    formFieldKey: sliderFormFieldKey,
+                    context: context,
+                    initialInt: work.numberOfMembersNeeded,
+                    max: dataController
+                        .getShift(widget.shiftId)
+                        .memberIds
+                        .length,
+                    label: 'Required Members',
+                    onSaved: (newValue) {
+                      if (newValue == null) {
+                        return;
+                      }
+                      work.numberOfMembersNeeded = newValue.toInt();
+                    },
+                  ),
+                  NumFormField(
+                    formFieldKey: numFormFieldKey,
+                    initialNum: work.load,
+                    min: 0,
+                    max: 10000,
+                    label: 'Relative Difficulty',
+                    onSaved: (value) {
+                      work.load = value.toDouble();
+                    },
+                  )
                 ],
               ),
             ),
