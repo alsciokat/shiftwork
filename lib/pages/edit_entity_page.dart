@@ -222,6 +222,9 @@ class EditMemberPart extends StatelessWidget {
                   StringFormField(
                     hintText: 'Name',
                     initialText: member.name,
+                    onChanged: (text) {
+                      member.name = text;
+                    },
                     onSaved: (value) {
                       if (value == null) {
                         return;
@@ -232,6 +235,9 @@ class EditMemberPart extends StatelessWidget {
                   StringFormField(
                     initialText: member.description,
                     hintText: 'Description',
+                    onChanged: (text) {
+                      member.description = text;
+                    },
                     onSaved: (value) {
                       if (value == null) {
                         return;
@@ -403,6 +409,9 @@ class EditGroupPart extends StatelessWidget {
                     StringFormField(
                       initialText: group.name,
                       hintText: 'Name',
+                      onChanged: (text) {
+                        group.name = text;
+                      },
                       onSaved: (value) {
                         if (value == null) {
                           return;
@@ -413,6 +422,9 @@ class EditGroupPart extends StatelessWidget {
                     StringFormField(
                       initialText: group.description,
                       hintText: 'Description',
+                      onChanged: (text) {
+                        group.description = text;
+                      },
                       onSaved: (value) {
                         if (value == null) {
                           return;

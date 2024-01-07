@@ -5,14 +5,9 @@ import '../core.dart';
 import '../data.dart';
 import 'edit_page.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -21,17 +16,24 @@ class _HomePageState extends State<HomePage> {
       body: Consumer<DataController>(
         builder: (context, dataController, child) => ListView.builder(
           itemCount: dataController.data.shiftData.objectOrder.length + 1,
+          itemExtent: 260,
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.all(8),
-          itemBuilder: ((context, index) {
-            if (index >= dataController.data.shiftData.objectOrder.length) {
-              return const Center(child: NewShiftCard());
-            }
-            return Center(
-              child: ShiftCard(
-                  shiftId: dataController.data.shiftData.objectOrder[index]),
-            );
-          }),
+          padding: const EdgeInsets.symmetric(horizontal: 50),
+          itemBuilder: (context, index) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 100.0),
+                child: index >= dataController.data.shiftData.objectOrder.length
+                    ? const NewShiftCard()
+                    : ShiftCard(
+                        shiftId:
+                            dataController.data.shiftData.objectOrder[index]),
+              ),
+              const Expanded(
+                child: Padding(padding: EdgeInsets.symmetric(vertical: 0)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -85,10 +87,9 @@ class NewShiftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 400,
-      height: 600,
+      width: 230,
+      height: 350,
       child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 40, horizontal: 15),
         elevation: 2,
         child: InkWell(
           onTap: () {
@@ -97,20 +98,24 @@ class NewShiftCard extends StatelessWidget {
                       shiftId: genId(),
                     )));
           },
-          child: const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Center(
-              child: SizedBox(
-                width: 100,
-                height: 100,
-                child: Column(
-                  children: [
-                    Icon(Icons.add, opticalSize: 48),
-                    Text("New Shift")
-                  ],
+          child: const Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: 124.0),
+                child: Icon(
+                  Icons.add,
+                  weight: 100,
+                  size: 42,
                 ),
               ),
-            ),
+              Padding(
+                padding: EdgeInsets.only(top: 20.0),
+                child: Text(
+                  "New Shift",
+                  style: TextStyle(fontSize: 16),
+                ),
+              )
+            ],
           ),
         ),
       ),
@@ -126,10 +131,9 @@ class ShiftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 400,
-      height: 600,
+      width: 230,
+      height: 350,
       child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 40, horizontal: 15),
         elevation: 2,
         child: InkWell(
           onTap: () {
@@ -138,36 +142,36 @@ class ShiftCard extends StatelessWidget {
                       shiftId: shiftId,
                     )));
           },
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Consumer<DataController>(
-                builder: (context, dataController, child) {
-              String memberNames = dataController
-                  .getShift(shiftId)
-                  .memberIds
-                  .map((id) => dataController.getMember(id).name)
-                  .join(", ");
-              if (memberNames == "") {
-                memberNames = "No Members";
-              }
-              String workNames = dataController
-                  .getShift(shiftId)
-                  .workIds
-                  .map((id) => dataController.getWork(id).name)
-                  .join(", ");
-              if (workNames == "") {
-                workNames = "No Works";
-              }
-              return Column(
+          child: Consumer<DataController>(
+              builder: (context, dataController, child) {
+            String memberNames = dataController
+                .getShift(shiftId)
+                .memberIds
+                .map((id) => dataController.getMember(id).name)
+                .join(", ");
+            if (memberNames == "") {
+              memberNames = "No Members";
+            }
+            String workNames = dataController
+                .getShift(shiftId)
+                .workIds
+                .map((id) => dataController.getWork(id).name)
+                .join(", ");
+            if (workNames == "") {
+              workNames = "No Works";
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(10.0),
+                    padding: const EdgeInsets.only(left: 20.0, right: 10),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Text(
                           dataController.getShift(shiftId).title,
-                          style: Theme.of(context).textTheme.headlineLarge,
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
                         Expanded(child: Container()),
                         MenuAnchor(
@@ -221,22 +225,68 @@ class ShiftCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.chevron_right),
-                    title: const Text("Members"),
-                    subtitle: Text(memberNames),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.chevron_right),
-                    title: const Text("Works"),
-                    subtitle: Text(workNames),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Column(children: [
+                      const Divider(
+                        height: 0,
+                      ),
+                      ShiftDetail(
+                          icon: const Icon(Icons.group),
+                          label: 'Members',
+                          detail: memberNames),
+                      ShiftDetail(
+                          icon: const Icon(Icons.grid_view),
+                          label: 'Works',
+                          detail: workNames)
+                    ]),
                   ),
                 ],
-              );
-            }),
-          ),
+              ),
+            );
+          }),
         ),
+      ),
+    );
+  }
+}
+
+class ShiftDetail extends StatelessWidget {
+  final Icon icon;
+  final String label;
+  final String detail;
+  const ShiftDetail(
+      {super.key,
+      required this.icon,
+      required this.label,
+      required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            icon,
+            Padding(
+              padding: const EdgeInsets.only(left: 12.0),
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ),
+          ]),
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text(
+              detail,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

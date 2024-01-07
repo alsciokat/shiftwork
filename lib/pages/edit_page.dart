@@ -101,7 +101,7 @@ class _EditPageState extends State<EditPage> {
                   },
                   removeEntity: dataController.removeGroup,
                   deletable: true,
-                  deleteEntity: dataController.deleteMember,
+                  deleteEntity: dataController.deleteGroup,
                 );
               }),
             ));
@@ -217,62 +217,98 @@ class _EditPageState extends State<EditPage> {
                 },
                 label: 'Select Member'));
           }
+          children.add(const Padding(padding: EdgeInsets.only(bottom: 100)));
           return ListView(
             children: children,
           );
         }),
         Consumer<DataController>(
-          builder: (context, dataController, child) => ListView.builder(
-            itemCount: dataController.getShift(widget.shiftId).workIds.length,
-            itemBuilder: ((context, index) {
-              Work work = dataController.getWork(
-                  dataController.getShift(widget.shiftId).workIds[index]);
-              return ListItem(
-                entityId: work.id,
-                entityName: work.name,
-                entityDescription: work.description,
-                entityIcon: const Icon(Icons.notes),
-                parentId: widget.shiftId,
-                onTap: (context) {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) =>
-                        EditWorkPage(shiftId: widget.shiftId, workId: work.id),
-                  ));
-                },
-                removeEntity: dataController.removeWork,
-                deletable: true,
-                deleteEntity: dataController.deleteWork,
-              );
-            }),
-          ),
+          builder: (context, dataController, child) => ListView(children: [
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: dataController.getShift(widget.shiftId).workIds.length,
+              itemBuilder: ((context, index) {
+                Work work = dataController.getWork(
+                    dataController.getShift(widget.shiftId).workIds[index]);
+                return ListItem(
+                  entityId: work.id,
+                  entityName: work.name,
+                  entityDescription: work.description,
+                  entityIcon: const Icon(Icons.notes),
+                  parentId: widget.shiftId,
+                  onTap: (context) {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) => EditWorkPage(
+                          shiftId: widget.shiftId, workId: work.id),
+                    ));
+                  },
+                  removeEntity: dataController.removeWork,
+                  deletable: true,
+                  deleteEntity: dataController.deleteWork,
+                );
+              }),
+            ),
+            const Padding(padding: EdgeInsets.only(bottom: 100))
+          ]),
         ),
-        Container(
-          color: Theme.of(context).colorScheme.secondary,
-          child: const Center(child: Text('Under Construction')),
-        )
+        Consumer<DataController>(
+            builder: (context, dataController, child) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(children: [
+                    LeniencyFormField(
+                        label: 'Fixed Member Leniency',
+                        initialValue: dataController
+                            .getShift(widget.shiftId)
+                            .fixedMemberLeniency,
+                        onChanged: (value) {
+                          if (value != null) {
+                            dataController
+                                .getShift(widget.shiftId)
+                                .fixedMemberLeniency = value;
+                            dataController.notify();
+                          }
+                        }),
+                    LeniencyFormField(
+                        label: 'Fixed Group Leniency',
+                        initialValue: dataController
+                            .getShift(widget.shiftId)
+                            .fixedGroupLeniency,
+                        onChanged: (value) {
+                          if (value != null) {
+                            dataController
+                                .getShift(widget.shiftId)
+                                .fixedGroupLeniency = value;
+                            dataController.notify();
+                          }
+                        }),
+                  ]),
+                ))
       ][currentPageIndex],
-      floatingActionButton: FloatingActionButton(
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        child: const Icon(Icons.add),
-        onPressed: () {
-          if (currentPageIndex == 0) {
-            Navigator.of(context)
-                .push<String>(MaterialPageRoute(builder: (context) {
-              return EditEntityPage(
-                  memberId: genId(),
-                  groupId: genId(),
-                  shiftId: widget.shiftId,
-                  initialPage: 0);
-            }));
-          } else if (currentPageIndex == 1) {
-            Navigator.of(context).push<String>(MaterialPageRoute(
-              builder: (context) =>
-                  EditWorkPage(shiftId: widget.shiftId, workId: genId()),
-            ));
-          }
-        },
-      ),
+      floatingActionButton: currentPageIndex == 2
+          ? null
+          : FloatingActionButton(
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: const Icon(Icons.add),
+              onPressed: () {
+                if (currentPageIndex == 0) {
+                  Navigator.of(context)
+                      .push<String>(MaterialPageRoute(builder: (context) {
+                    return EditEntityPage(
+                        memberId: genId(),
+                        groupId: genId(),
+                        shiftId: widget.shiftId,
+                        initialPage: 0);
+                  }));
+                } else if (currentPageIndex == 1) {
+                  Navigator.of(context).push<String>(MaterialPageRoute(
+                    builder: (context) =>
+                        EditWorkPage(shiftId: widget.shiftId, workId: genId()),
+                  ));
+                }
+              },
+            ),
       bottomNavigationBar: NavigationBar(
         onDestinationSelected: (int index) {
           setState(() {

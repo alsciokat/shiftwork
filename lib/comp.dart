@@ -8,6 +8,7 @@ class StringFormField extends StatelessWidget {
   final GlobalKey<FormFieldState<String>>? formKey;
   final String? initialText, hintText, label;
   final bool? autofocus;
+  final void Function(String text)? onChanged;
   final void Function(String? text) onSaved;
   const StringFormField(
       {super.key,
@@ -16,6 +17,7 @@ class StringFormField extends StatelessWidget {
       this.hintText,
       this.label,
       this.autofocus,
+      this.onChanged,
       required this.onSaved});
 
   @override
@@ -35,9 +37,49 @@ class StringFormField extends StatelessWidget {
         ),
         style: Theme.of(context).textTheme.titleMedium,
         autofocus: autofocus ?? false,
+        onChanged: onChanged,
         onSaved: (newValue) {
           onSaved(newValue);
         },
+      ),
+    );
+  }
+}
+
+class LeniencyFormField extends StatelessWidget {
+  final String label;
+  final Leniency initialValue;
+  final void Function(Leniency? value) onChanged;
+  const LeniencyFormField(
+      {super.key,
+      required this.label,
+      required this.initialValue,
+      required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          Row(
+            children: [
+              Radio<Leniency>(
+                  value: Leniency.force,
+                  groupValue: initialValue,
+                  onChanged: onChanged),
+              const Text('Strict'),
+              const Padding(padding: EdgeInsets.symmetric(horizontal: 30)),
+              Radio<Leniency>(
+                  value: Leniency.recommend,
+                  groupValue: initialValue,
+                  onChanged: onChanged),
+              const Text('Lenient'),
+            ],
+          )
+        ],
       ),
     );
   }
@@ -599,8 +641,8 @@ class _SelectDialogState extends State<SelectDialog> {
 
   @override
   Widget build(BuildContext context) {
-    double contentHeight =
-        (59.0 * widget.ids.length < 800) ? 59.0 * widget.ids.length : 800.0;
+    // double contentHeight =
+    //     (59.0 * widget.ids.length < 500) ? 59.0 * widget.ids.length : 500.0;
     return AlertDialog(
       title: const Text('Select'),
       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -608,9 +650,10 @@ class _SelectDialogState extends State<SelectDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Divider(),
-          SizedBox(
-            height: contentHeight,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 400),
             child: ListView.builder(
+                shrinkWrap: true,
                 itemCount: widget.ids.length,
                 itemBuilder: (context, index) {
                   String id = widget.ids.elementAt(index);

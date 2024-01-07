@@ -451,6 +451,8 @@ class DataController extends ChangeNotifier {
     new_candidate:
     while (!members.every((member) => member.availablity == notAvailable)) {
       Member candidate = _getCandidateMember(members, at, scheme);
+      // print(
+      //     '[${candidate.name}] load: ${candidate.getLoad(scheme: GetLoadScheme.fatigue, workStartDateTime: at)}, availablity: ${candidate.availablity}');
       // This is sus! What if a member is set to notAvailable, but not removed from the group.availableNow counter.
       for (final group in groups) {
         if (group.memberIds.contains(candidate.id)) {
@@ -488,9 +490,9 @@ class DataController extends ChangeNotifier {
       Iterable<Member> members, DateTime? at, GetNextMemberScheme scheme) {
     if (scheme == GetNextMemberScheme.getLeastLoad) {
       return members.reduce((member1, member2) {
-        if (member1.getLoad(scheme: GetLoadScheme.plain) /
+        if ((member1.getLoad(scheme: GetLoadScheme.plain) + .1) /
                 member1.availablity <=
-            member2.getLoad(scheme: GetLoadScheme.plain) /
+            (member2.getLoad(scheme: GetLoadScheme.plain) + .1) /
                 member2.availablity) {
           return member1;
         }
@@ -499,11 +501,13 @@ class DataController extends ChangeNotifier {
     }
     if (scheme == GetNextMemberScheme.getLeastLoadWithFatigue) {
       return members.reduce((member1, member2) {
-        if (member1.getLoad(
-                    scheme: GetLoadScheme.fatigue, workStartDateTime: at) /
+        if ((member1.getLoad(
+                        scheme: GetLoadScheme.fatigue, workStartDateTime: at) +
+                    .1) /
                 member1.availablity <=
-            member2.getLoad(
-                    scheme: GetLoadScheme.fatigue, workStartDateTime: at) /
+            (member2.getLoad(
+                        scheme: GetLoadScheme.fatigue, workStartDateTime: at) +
+                    .1) /
                 member2.availablity) {
           return member1;
         }
