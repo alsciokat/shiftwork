@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -5,9 +7,9 @@ import 'package:provider/provider.dart';
 import 'data.dart';
 import 'pages/home_page.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
+  unawaited(MobileAds.instance.initialize());
   runApp(ChangeNotifierProvider(
     create: (context) => DataController(),
     child: const ShiftWork(),
