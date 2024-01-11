@@ -249,6 +249,7 @@ class Shift extends IObject {
   Leniency fixedGroupLeniency;
   Leniency maximumAvailableLeniency;
   String description;
+  bool created = false;
 
   Shift(
       {required super.id,
@@ -291,7 +292,7 @@ class Shift extends IObject {
 
   @override
   Shift fromJson(String id, Map<String, dynamic> objectJson) {
-    return Shift(
+    Shift newShift = Shift(
       id: id,
       title: objectJson['title'] ?? nameDefault,
       memberIds: List<String>.from(objectJson['memberIds'] ?? memberIdsDefault),
@@ -306,6 +307,8 @@ class Shift extends IObject {
               maximumAvailableLeniencyDefault.index],
       description: objectJson['description'] ?? descriptionDefault,
     );
+    newShift.created = objectJson['created'] ?? false;
+    return newShift;
   }
 
   @override
@@ -318,6 +321,7 @@ class Shift extends IObject {
         'fixedGroupLeniency': fixedGroupLeniency.index,
         'maximumAvailableLeniency': maximumAvailableLeniency.index,
         'description': description,
+        'created': created,
       };
 }
 

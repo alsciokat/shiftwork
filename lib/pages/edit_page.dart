@@ -42,11 +42,12 @@ class _EditPageState extends State<EditPage> {
         actions: [
           TextButton(
               onPressed: () {
+                DataController dataController =
+                    Provider.of<DataController>(context, listen: false);
                 try {
-                  Provider.of<DataController>(context, listen: false)
-                      .saveTempShift()
-                      .resetLoads()
-                      .generateShift(widget.shiftId);
+                  dataController.saveTempShift().generateShift(widget.shiftId);
+                  dataController.getShift(widget.shiftId).created = true;
+                  dataController.flush();
                 } catch (error) {
                   if (error is ShiftWorkError) {
                     informUser(context,

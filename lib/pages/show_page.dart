@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shift_work/comp.dart';
 
 import '../core.dart';
 import '../data.dart';
@@ -29,22 +31,19 @@ class WorkCard extends StatelessWidget {
           padding: const EdgeInsets.all(20.0),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  name,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10.0),
-                  child: Text(
-                    description,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                )
-              ],
+            Text(
+              name,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
+            description.isNotEmpty
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 5.0),
+                    child: Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  )
+                : const Padding(padding: EdgeInsets.zero),
             Padding(
               padding: const EdgeInsets.only(top: 5.0),
               child: Text(
@@ -53,7 +52,7 @@ class WorkCard extends StatelessWidget {
               ),
             ),
             const Divider(
-              height: 20,
+              height: 10,
             ),
             Padding(
               padding: const EdgeInsets.only(top: 5.0),
@@ -74,16 +73,52 @@ class ShowPage extends StatelessWidget {
   Widget build(BuildContext context) {
     DataController dataController =
         Provider.of<DataController>(context, listen: false);
-    List<Work> works = dataController
-        .getShift(shiftId)
-        .workIds
-        .map((id) => dataController.getWork(id))
-        .toList();
+    Shift shift = dataController.getShift(shiftId);
+    List<Work> works =
+        shift.workIds.map((id) => dataController.getWork(id)).toList();
     works.sort(
         (a, b) => a.dateTimeInterval.start.compareTo(b.dateTimeInterval.start));
 
     return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          actions: [
+            TextButton(
+                onPressed: () async {
+                  PermissionStatus status = await Permission.storage.status;
+                  if (!status.isGranted) {
+                    status = await Permission.storage.request();
+                  }
+                  if (status != PermissionStatus.granted) {
+                    return;
+                  }
+                  String csvData =
+                      'Name\tDescription\tStart At\tEnd At\tMembers\n';
+                  for (Work work in works) {
+                    csvData +=
+                        '${work.name}\t${work.description}\t${work.dateTimeInterval.start.toString()}\t${work.dateTimeInterval.end.toString()}';
+                    for (String memberId in work.memberIds) {
+                      csvData += '\t${dataController.getMember(memberId).name}';
+                    }
+                    csvData += '\n';
+                  }
+                  dataController.ioController
+                      .writeToExternalStorage('${shift.title}.tsv', csvData)
+                      .then((success) {
+                    if (success) {
+                      informUser(context,
+                          title: 'Saved',
+                          content:
+                              'Saved to: Internal Storage/Documents/${shift.title}.tsv');
+                    } else {
+                      informUser(context,
+                          title: 'Export Failed',
+                          content: 'Please contact developer for it.');
+                    }
+                  });
+                },
+                child: const Text('Export'))
+          ],
+        ),
         body: ListView.builder(
           itemCount: works.length,
           itemBuilder: (context, index) {

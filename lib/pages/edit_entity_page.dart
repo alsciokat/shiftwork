@@ -441,7 +441,7 @@ class EditGroupPart extends StatelessWidget {
                 child: IntSliderFormField(
                   formFieldKey: sliderFormFieldKey,
                   context: context,
-                  initialInt: group.memberIds.length,
+                  initialInt: group.maximumAvailable,
                   max: group.memberIds.length,
                   label: "Maximum Available at Once",
                   onSaved: (newValue) {

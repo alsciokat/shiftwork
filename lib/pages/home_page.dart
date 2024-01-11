@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shift_work/pages/show_page.dart';
 
 import '../core.dart';
 import '../data.dart';
@@ -28,9 +29,6 @@ class HomePage extends StatelessWidget {
                     : ShiftCard(
                         shiftId:
                             dataController.data.shiftData.objectOrder[index]),
-              ),
-              const Expanded(
-                child: Padding(padding: EdgeInsets.symmetric(vertical: 0)),
               ),
             ],
           ),
@@ -135,45 +133,55 @@ class ShiftCard extends StatelessWidget {
       height: 350,
       child: Card(
         elevation: 2,
-        child: InkWell(
-          onTap: () {
-            Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => EditPage(
-                      shiftId: shiftId,
-                    )));
-          },
-          child: Consumer<DataController>(
-              builder: (context, dataController, child) {
-            String memberNames = dataController
-                .getShift(shiftId)
-                .memberIds
-                .map((id) => dataController.getMember(id).name)
-                .join(", ");
-            if (memberNames == "") {
-              memberNames = "No Members";
-            }
-            String workNames = dataController
-                .getShift(shiftId)
-                .workIds
-                .map((id) => dataController.getWork(id).name)
-                .join(", ");
-            if (workNames == "") {
-              workNames = "No Works";
-            }
-            return Padding(
+        child:
+            Consumer<DataController>(builder: (context, dataController, child) {
+          String memberNames = dataController
+              .getShift(shiftId)
+              .memberIds
+              .map((id) => dataController.getMember(id).name)
+              .join(", ");
+          if (memberNames == "") {
+            memberNames = "No Members";
+          }
+          String workNames = dataController
+              .getShift(shiftId)
+              .workIds
+              .map((id) => dataController.getWork(id).name)
+              .join(", ");
+          if (workNames == "") {
+            workNames = "No Works";
+          }
+          bool created = dataController.getShift(shiftId).created;
+          return InkWell(
+            onTap: () {
+              if (created) {
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => ShowPage(shiftId)));
+              } else {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => EditPage(
+                          shiftId: shiftId,
+                        )));
+              }
+            },
+            child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12.0),
               child: Column(
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(left: 20.0, right: 10),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          dataController.getShift(shiftId).title,
-                          style: Theme.of(context).textTheme.titleLarge,
+                        SizedBox(
+                          width: 140,
+                          child: Text(
+                            dataController.getShift(shiftId).title,
+                            style: Theme.of(context).textTheme.titleLarge,
+                            maxLines: 2,
+                            overflow: TextOverflow.fade,
+                          ),
                         ),
-                        Expanded(child: Container()),
                         MenuAnchor(
                             builder: (context, controller, child) => IconButton(
                                 onPressed: () {
@@ -186,6 +194,15 @@ class ShiftCard extends StatelessWidget {
                                 },
                                 icon: const Icon(Icons.more_vert)),
                             menuChildren: [
+                              MenuItemButton(
+                                  onPressed: () {
+                                    Navigator.of(context)
+                                        .push(MaterialPageRoute(
+                                            builder: (context) => EditPage(
+                                                  shiftId: shiftId,
+                                                )));
+                                  },
+                                  child: const Text('Edit')),
                               MenuItemButton(
                                   onPressed: () {
                                     showDialog(
@@ -225,27 +242,47 @@ class ShiftCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Column(children: [
-                      const Divider(
-                        height: 0,
-                      ),
-                      ShiftDetail(
-                          icon: const Icon(Icons.group),
-                          label: 'Members',
-                          detail: memberNames),
-                      ShiftDetail(
-                          icon: const Icon(Icons.grid_view),
-                          label: 'Works',
-                          detail: workNames)
-                    ]),
+                  Expanded(
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.only(left: 20.0, right: 20, top: 5),
+                      child: Column(children: [
+                        const Divider(
+                          height: 0,
+                        ),
+                        ShiftDetail(
+                            icon: const Icon(Icons.group),
+                            label: 'Members',
+                            detail: memberNames),
+                        ShiftDetail(
+                            icon: const Icon(Icons.grid_view),
+                            label: 'Works',
+                            detail: workNames),
+                        Expanded(
+                          child: Container(),
+                        ),
+                        created
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Created',
+                                    style:
+                                        Theme.of(context).textTheme.labelSmall,
+                                  )
+                                ],
+                              )
+                            : const Padding(
+                                padding: EdgeInsets.zero,
+                              )
+                      ]),
+                    ),
                   ),
                 ],
               ),
-            );
-          }),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }

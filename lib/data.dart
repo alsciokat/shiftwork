@@ -15,7 +15,7 @@ class IOController {
     final file = File('${directory.path}/shift_data.json');
     final exists = await file.exists();
     if (!exists) {
-      file.create(recursive: true);
+      await file.create(recursive: true);
     }
     return file;
   }
@@ -28,6 +28,23 @@ class IOController {
   Future<String> read() async {
     final file = await dataFile;
     return file.readAsString();
+  }
+
+  Future<bool> writeToExternalStorage(String fileName, String data) async {
+    if (Platform.isAndroid) {
+      final documentDirectory = Directory("/storage/emulated/0/Documents");
+      final exists = await documentDirectory.exists();
+      if (!exists) {
+        await documentDirectory.create();
+      }
+      final exportFile = File('${documentDirectory.path}/$fileName');
+      if (!exportFile.existsSync()) {
+        await exportFile.create();
+      }
+      await exportFile.writeAsString(data);
+      return true;
+    }
+    return false;
   }
 }
 
@@ -307,7 +324,7 @@ class DataController extends ChangeNotifier {
   //   return this;
   // }
 
-  void generateShift(String shiftId) {
+  DataController generateShift(String shiftId) {
     final Shift shift = getShift(shiftId);
     Leniency gFixedMemberLeniency;
     int efml = 1;
@@ -327,13 +344,11 @@ class DataController extends ChangeNotifier {
     Member? maybeNextMember;
     Member nextMember;
 
+    resetLoads();
+
     // Main Loop
     while (worksLeft.isNotEmpty) {
       nextWork = _getNextWork(worksLeft);
-      for (Group group in groups) {
-        group.availableNow =
-            min(group.maximumAvailable, group.memberIds.length);
-      }
 
       // Get the list of available members by iterating over all possible configurations.
       for (int i = 0; i < 4; i++) {
@@ -373,6 +388,22 @@ class DataController extends ChangeNotifier {
           nextWork.numberOfMembersNeeded) {
         throw ShiftWorkError('Not enough member for ${nextWork.name}');
       }
+      // Calculate availableNow
+      for (Group group in groups) {
+        if (group.maximumAvailable == -1) {
+          group.availableNow = group.memberIds.length;
+        } else {
+          group.availableNow = group.maximumAvailable;
+        }
+        Iterable<Member> groupMembers =
+            members.where((member) => group.memberIds.contains(member.id));
+        for (Member groupMember in groupMembers) {
+          if (groupMember.assignedIntervals.any(
+              (interval) => interval.intersect(nextWork.dateTimeInterval))) {
+            group.availableNow -= 1;
+          }
+        }
+      }
 
       // Assign a member one by one. Severe mistake at a90c675. It was '>='
       while (nextWork.memberIds.length < nextWork.numberOfMembersNeeded) {
@@ -406,6 +437,7 @@ class DataController extends ChangeNotifier {
       }
       worksLeft.remove(nextWork);
     }
+    return this;
   }
 
   Work _getNextWork(Iterable<Work> works,
@@ -466,7 +498,9 @@ class DataController extends ChangeNotifier {
             }
             continue new_candidate;
           }
+          // the candidate member is available. Decreasing the availableNow
           group.availableNow -= 1;
+          // mark all the other members in the group notavailable.
           if (group.availableNow == 0) {
             for (Member member in group.memberIds
                 .map<Member>((memberId) => getMember(memberId))) {
