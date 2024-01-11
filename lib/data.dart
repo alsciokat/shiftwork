@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
@@ -390,18 +389,22 @@ class DataController extends ChangeNotifier {
       }
       // Calculate availableNow
       for (Group group in groups) {
-        if (group.maximumAvailable == -1) {
-          group.availableNow = group.memberIds.length;
-        } else {
-          group.availableNow = group.maximumAvailable;
-        }
-        Iterable<Member> groupMembers =
-            members.where((member) => group.memberIds.contains(member.id));
-        for (Member groupMember in groupMembers) {
-          if (groupMember.assignedIntervals.any(
-              (interval) => interval.intersect(nextWork.dateTimeInterval))) {
-            group.availableNow -= 1;
+        if (!nextWork.allowOverlap) {
+          if (group.maximumAvailable == -1) {
+            group.availableNow = group.memberIds.length;
+          } else {
+            group.availableNow = group.maximumAvailable;
           }
+          Iterable<Member> groupMembers =
+              members.where((member) => group.memberIds.contains(member.id));
+          for (Member groupMember in groupMembers) {
+            if (groupMember.assignedIntervals.any(
+                (interval) => interval.intersect(nextWork.dateTimeInterval))) {
+              group.availableNow -= 1;
+            }
+          }
+        } else {
+          group.availableNow = group.memberIds.length;
         }
       }
 
@@ -423,7 +426,9 @@ class DataController extends ChangeNotifier {
         // Assign
         nextWork.memberIds.add(nextMember.id);
         nextMember.addLoad(nextWork.load, at: nextWork.endDateTime);
-        nextMember.assignedIntervals.add(nextWork.dateTimeInterval);
+        if (!nextWork.allowOverlap) {
+          nextMember.assignedIntervals.add(nextWork.dateTimeInterval);
+        }
         nextMember.availablity = notAvailable;
       }
 
@@ -483,9 +488,8 @@ class DataController extends ChangeNotifier {
     new_candidate:
     while (!members.every((member) => member.availablity == notAvailable)) {
       Member candidate = _getCandidateMember(members, at, scheme);
-      // print(
-      //     '[${candidate.name}] load: ${candidate.getLoad(scheme: GetLoadScheme.fatigue, workStartDateTime: at)}, availablity: ${candidate.availablity}');
-      // This is sus! What if a member is set to notAvailable, but not removed from the group.availableNow counter.
+      // What if a member is set to notAvailable, but not removed from the group.availableNow counter.
+      // ADD: This is actually desirable behavior. It means the group is not constraining but other factors are.
       for (final group in groups) {
         if (group.memberIds.contains(candidate.id)) {
           if (group.availableNow <= 0) {
@@ -563,9 +567,11 @@ class DataController extends ChangeNotifier {
         return notAvailable;
       }
     }
-    for (final dateTimeInterval in member.assignedIntervals) {
-      if (dateTimeInterval.intersect(work.dateTimeInterval)) {
-        return notAvailable;
+    if (!work.allowOverlap) {
+      for (final dateTimeInterval in member.assignedIntervals) {
+        if (dateTimeInterval.intersect(work.dateTimeInterval)) {
+          return notAvailable;
+        }
       }
     }
     if (work.fixedMemberIds.contains(member.id)) {

@@ -518,6 +518,7 @@ class Work extends IObject {
   static List<String> fixedGroupIdsDefault = [];
   static Leniency fixedGroupLeniencyDefault = Leniency.inherit;
   static List<String> memberIdsDefault = [];
+  static bool allowOverlapDefault = false;
   static String descriptionDefault = "";
   static DateTime startDateTimeDefault = DateTime.now();
   static DateTime endDateTimeDefault =
@@ -550,6 +551,7 @@ class Work extends IObject {
   Leniency fixedGroupLeniency;
 
   List<String> memberIds;
+  bool allowOverlap;
   String description;
 
   Work(
@@ -564,6 +566,7 @@ class Work extends IObject {
       List<String>? fixedGroupIds,
       Leniency? fixedGroupLeniency,
       List<String>? memberIds,
+      bool? allowOverlap,
       String? description = ""})
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
@@ -577,6 +580,7 @@ class Work extends IObject {
         fixedGroupIds = fixedGroupIds ?? List.from(fixedGroupIdsDefault),
         fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
         memberIds = memberIds ?? List.from(memberIdsDefault),
+        allowOverlap = allowOverlap ?? allowOverlapDefault,
         description = description ?? descriptionDefault;
 
   @override
@@ -596,6 +600,7 @@ class Work extends IObject {
     fixedGroupIdsDefault = List<String>.from(workJson['fixedGroupIds']);
     fixedGroupLeniencyDefault = Leniency.values[workJson['fixedGroupLeniency']];
     memberIdsDefault = List<String>.from(workJson['memberIds']);
+    allowOverlapDefault = workJson['allowOverlap'] ?? allowOverlapDefault;
     descriptionDefault = workJson['description'];
   }
 
@@ -620,6 +625,7 @@ class Work extends IObject {
             fixedGroupLeniencyDefault.index],
         memberIds:
             List<String>.from(objectJson['memberIds'] ?? memberIdsDefault),
+        allowOverlap: objectJson['allowOverlap'] ?? allowOverlapDefault,
         description: objectJson['description'] ?? descriptionDefault);
   }
 
@@ -635,6 +641,7 @@ class Work extends IObject {
         'fixedGroupIds': fixedGroupIds,
         'fixedGroupLeniency': fixedGroupLeniency.index,
         'memberIds': memberIds,
+        'allowOverlap': allowOverlap,
         'description': description,
       };
 }

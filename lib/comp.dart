@@ -1,8 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'core.dart';
 import 'data.dart';
+
+class HomeBannerAd extends StatefulWidget {
+  const HomeBannerAd({super.key});
+
+  @override
+  State<HomeBannerAd> createState() => _HomeBannerAdState();
+}
+
+class _HomeBannerAdState extends State<HomeBannerAd> {
+  BannerAd? adContent;
+
+  @override
+  void initState() {
+    super.initState();
+    final bannerAd = BannerAd(
+      size: AdSize.banner,
+      adUnitId: "ca-app-pub-7340749292526171/4946793048",
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() {
+            adContent = ad as BannerAd;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+        },
+      ),
+      request: const AdRequest(),
+    );
+    bannerAd.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+        child: SizedBox(
+      width: AdSize.banner.width.toDouble(),
+      height: AdSize.banner.height.toDouble(),
+      child: adContent == null ? const SizedBox() : AdWidget(ad: adContent!),
+    ));
+  }
+}
 
 class StringFormField extends StatelessWidget {
   final GlobalKey<FormFieldState<String>>? formKey;
@@ -284,7 +327,7 @@ class NumFormField extends StatelessWidget {
               flex: 2,
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.labelLarge,
               )),
           SizedBox(
             width: 90,
@@ -482,7 +525,7 @@ class SwitchFormField extends FormField<bool> {
                   Expanded(
                     child: Text(
                       label,
-                      style: Theme.of(state.context).textTheme.bodyLarge,
+                      style: Theme.of(state.context).textTheme.labelLarge,
                     ),
                   ),
                   Switch(

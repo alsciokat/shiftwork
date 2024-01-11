@@ -41,6 +41,7 @@ dependencies:
   intl: ^0.18.1
   calendar_view: ^1.0.4
   permission_handler: ^11.0.1
+  google_mobile_ads: ^4.0.0
 
 dev_dependencies:
   flutter_test:

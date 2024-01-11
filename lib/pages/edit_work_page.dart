@@ -159,7 +159,16 @@ class _EditWorkPageState extends State<EditWorkPage> {
                     onSaved: (value) {
                       work.load = value.toDouble();
                     },
-                  )
+                  ),
+                  SwitchFormField(
+                    initialBool: work.allowOverlap,
+                    label: 'Allow Overlap',
+                    onSaved: (newValue) {
+                      if (newValue != null) {
+                        work.allowOverlap = newValue;
+                      }
+                    },
+                  ),
                 ],
               ),
             ),

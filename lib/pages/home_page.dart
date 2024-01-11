@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shift_work/comp.dart';
 import 'package:shift_work/pages/show_page.dart';
 
 import '../core.dart';
@@ -14,25 +15,33 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(),
       drawer: const SideBar(),
-      body: Consumer<DataController>(
-        builder: (context, dataController, child) => ListView.builder(
-          itemCount: dataController.data.shiftData.objectOrder.length + 1,
-          itemExtent: 260,
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 50),
-          itemBuilder: (context, index) => Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 100.0),
-                child: index >= dataController.data.shiftData.objectOrder.length
-                    ? const NewShiftCard()
-                    : ShiftCard(
-                        shiftId:
-                            dataController.data.shiftData.objectOrder[index]),
+      body: Column(
+        children: [
+          Consumer<DataController>(
+            builder: (context, dataController, child) => Expanded(
+              child: ListView.builder(
+                itemCount: dataController.data.shiftData.objectOrder.length + 1,
+                itemExtent: 260,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 50),
+                itemBuilder: (context, index) => Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 100.0),
+                      child: index >=
+                              dataController.data.shiftData.objectOrder.length
+                          ? const NewShiftCard()
+                          : ShiftCard(
+                              shiftId: dataController
+                                  .data.shiftData.objectOrder[index]),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
+          const HomeBannerAd(),
+        ],
       ),
     );
   }
