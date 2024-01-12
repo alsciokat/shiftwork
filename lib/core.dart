@@ -248,6 +248,7 @@ class Shift extends IObject {
   Leniency fixedMemberLeniency;
   Leniency fixedGroupLeniency;
   Leniency maximumAvailableLeniency;
+  bool shuffleMembers;
   String description;
   bool created = false;
 
@@ -260,6 +261,7 @@ class Shift extends IObject {
       Leniency? fixedMemberLeniency,
       Leniency? fixedGroupLeniency,
       Leniency? maximumAvailableLeniency,
+      bool? shuffleMembers,
       String? description})
       : title = title ?? nameDefault,
         memberIds = memberIds ?? List.from(memberIdsDefault),
@@ -269,6 +271,7 @@ class Shift extends IObject {
         fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
         maximumAvailableLeniency =
             maximumAvailableLeniency ?? maximumAvailableLeniencyDefault,
+        shuffleMembers = shuffleMembers ?? true,
         description = description ?? descriptionDefault;
 
   @override
@@ -305,6 +308,7 @@ class Shift extends IObject {
       maximumAvailableLeniency: Leniency.values[
           objectJson['maximumAvailableLeniency'] ??
               maximumAvailableLeniencyDefault.index],
+      shuffleMembers: objectJson['shuffleMembers'],
       description: objectJson['description'] ?? descriptionDefault,
     );
     newShift.created = objectJson['created'] ?? false;
@@ -320,6 +324,7 @@ class Shift extends IObject {
         'fixedMemberLeniency': fixedMemberLeniency.index,
         'fixedGroupLeniency': fixedGroupLeniency.index,
         'maximumAvailableLeniency': maximumAvailableLeniency.index,
+        'shuffleMembers': shuffleMembers,
         'description': description,
         'created': created,
       };
@@ -510,6 +515,8 @@ class Group extends IObject {
 enum Leniency { inherit, force, recommend }
 
 class Work extends IObject {
+  // TODO: remove defaults for dynamic values such as DateTime
+  //       since they are fixed at the compile time.
   static String nameDefault = "Unnamed";
   static double loadDefault = 1;
   static int numberOfMembersNeededDefault = 1;
@@ -520,9 +527,6 @@ class Work extends IObject {
   static List<String> memberIdsDefault = [];
   static bool allowOverlapDefault = false;
   static String descriptionDefault = "";
-  static DateTime startDateTimeDefault = DateTime.now();
-  static DateTime endDateTimeDefault =
-      DateTime.now().add(const Duration(hours: 1));
 
   String name;
 
@@ -554,6 +558,10 @@ class Work extends IObject {
   bool allowOverlap;
   String description;
 
+  List<bool> repeatOn;
+  DateTime endRepeatOn;
+  List<Work> repeatedWorks;
+
   Work(
       {required super.id,
       String? name,
@@ -567,21 +575,26 @@ class Work extends IObject {
       Leniency? fixedGroupLeniency,
       List<String>? memberIds,
       bool? allowOverlap,
-      String? description = ""})
+      String? description = "",
+      List<bool>? repeatOn,
+      DateTime? endRepeatOn,
+      List<Work>? repeatedWorks})
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
         numberOfMembersNeeded =
             numberOfMembersNeeded ?? numberOfMembersNeededDefault,
-        dateTimeInterval = DateTimeInterval(
-            startDateTime ?? startDateTimeDefault,
-            endDateTime ?? endDateTimeDefault),
+        dateTimeInterval = DateTimeInterval(startDateTime ?? DateTime.now(),
+            endDateTime ?? DateTime.now().add(const Duration(hours: 1))),
         fixedMemberIds = fixedMemberIds ?? List.from(fixedMemberIdsDefault),
         fixedMemberLeniency = fixedMemberLeniency ?? fixedMemberLeniencyDefault,
         fixedGroupIds = fixedGroupIds ?? List.from(fixedGroupIdsDefault),
         fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
         memberIds = memberIds ?? List.from(memberIdsDefault),
         allowOverlap = allowOverlap ?? allowOverlapDefault,
-        description = description ?? descriptionDefault;
+        description = description ?? descriptionDefault,
+        repeatOn = repeatOn ?? List.filled(7, false),
+        endRepeatOn = endRepeatOn ?? DateTime.now(),
+        repeatedWorks = repeatedWorks ?? List<Work>.empty(growable: true);
 
   @override
   Work create({required String id}) {
@@ -592,8 +605,6 @@ class Work extends IObject {
     nameDefault = workJson['name'];
     loadDefault = workJson['load'];
     numberOfMembersNeededDefault = workJson['numberOfMembersNeeded'];
-    startDateTimeDefault = DateTime.parse(workJson['startDateTime']);
-    endDateTimeDefault = DateTime.parse(workJson['endDateTime']);
     fixedMemberIdsDefault = List<String>.from(workJson['fixedMemberIds']);
     fixedMemberLeniencyDefault =
         Leniency.values[workJson['fixedMemberLeniency']];
@@ -626,7 +637,11 @@ class Work extends IObject {
         memberIds:
             List<String>.from(objectJson['memberIds'] ?? memberIdsDefault),
         allowOverlap: objectJson['allowOverlap'] ?? allowOverlapDefault,
-        description: objectJson['description'] ?? descriptionDefault);
+        description: objectJson['description'] ?? descriptionDefault,
+        repeatOn: List.from(objectJson['repeatOn']),
+        endRepeatOn: DateTime.parse(objectJson['endRepeatOn']),
+        repeatedWorks: List.from(objectJson['repeatedWorks']
+            ?.map((workJson) => fromJson(genId(), workJson))));
   }
 
   @override
@@ -643,6 +658,9 @@ class Work extends IObject {
         'memberIds': memberIds,
         'allowOverlap': allowOverlap,
         'description': description,
+        'repeatOn': repeatOn,
+        'endRepeatOn': endRepeatOn.toString(),
+        'repeatedWorks': repeatedWorks.map((work) => work.toJson()).toList(),
       };
 }
 

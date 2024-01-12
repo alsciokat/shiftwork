@@ -74,8 +74,13 @@ class ShowPage extends StatelessWidget {
     DataController dataController =
         Provider.of<DataController>(context, listen: false);
     Shift shift = dataController.getShift(shiftId);
-    List<Work> works =
-        shift.workIds.map((id) => dataController.getWork(id)).toList();
+    List<Work> works = [];
+    for (Work work in shift.workIds.map((id) => dataController.getWork(id))) {
+      works.add(work);
+      for (Work repeatedWork in work.repeatedWorks) {
+        works.add(repeatedWork);
+      }
+    }
     works.sort(
         (a, b) => a.dateTimeInterval.start.compareTo(b.dateTimeInterval.start));
 

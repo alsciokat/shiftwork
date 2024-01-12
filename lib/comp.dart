@@ -89,43 +89,80 @@ class StringFormField extends StatelessWidget {
   }
 }
 
-class LeniencyFormField extends StatelessWidget {
+class LeniencyFormField extends FormField<Leniency> {
   final String label;
-  final Leniency initialValue;
-  final void Function(Leniency? value) onChanged;
-  const LeniencyFormField(
+  final void Function(Leniency? value)? onChanged;
+  LeniencyFormField(
       {super.key,
       required this.label,
-      required this.initialValue,
-      required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          Row(
-            children: [
-              Radio<Leniency>(
-                  value: Leniency.force,
-                  groupValue: initialValue,
-                  onChanged: onChanged),
-              const Text('Strict'),
-              const Padding(padding: EdgeInsets.symmetric(horizontal: 30)),
-              Radio<Leniency>(
-                  value: Leniency.recommend,
-                  groupValue: initialValue,
-                  onChanged: onChanged),
-              const Text('Lenient'),
-            ],
-          )
-        ],
-      ),
-    );
-  }
+      required super.initialValue,
+      bool? allowInherit,
+      this.onChanged,
+      super.onSaved})
+      : super(builder: (FormFieldState<Leniency> state) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: Theme.of(state.context).textTheme.labelLarge),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(children: [
+                          Radio<Leniency>(
+                            value: Leniency.inherit,
+                            groupValue: state.value ?? initialValue,
+                            onChanged: allowInherit == true
+                                ? (value) {
+                                    state.didChange(value);
+                                    if (onChanged != null) {
+                                      onChanged(value);
+                                    }
+                                  }
+                                : null,
+                          ),
+                          const Text('Inherit')
+                        ]),
+                        Row(
+                          children: [
+                            Radio<Leniency>(
+                              value: Leniency.recommend,
+                              groupValue: state.value ?? initialValue,
+                              onChanged: (value) {
+                                state.didChange(value);
+                                if (onChanged != null) {
+                                  onChanged(value);
+                                }
+                              },
+                            ),
+                            const Text('Lenient'),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            Radio<Leniency>(
+                              value: Leniency.force,
+                              groupValue: state.value ?? initialValue,
+                              onChanged: (value) {
+                                state.didChange(value);
+                                if (onChanged != null) {
+                                  onChanged(value);
+                                }
+                              },
+                            ),
+                            const Text('Strict'),
+                          ],
+                        ),
+                      ]),
+                )
+              ],
+            ),
+          );
+        });
 }
 
 // class SuffixIcon extends StatelessWidget {
@@ -150,6 +187,63 @@ class LeniencyFormField extends StatelessWidget {
 //         icon: const Icon(Icons.clear));
 //   }
 // }
+
+List<String> dayString = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+String convertRepeatOnToString(List<bool>? repeatOn) {
+  if (repeatOn == null) {
+    return 'Does Not Repeat';
+  }
+  String returnString = '';
+  for (int i = 0; i < 7; i++) {
+    if (repeatOn[i]) {
+      returnString += '${dayString[i]}, ';
+    }
+  }
+  if (returnString.isEmpty) {
+    return 'Does Not Repeat';
+  }
+  return returnString;
+}
+
+class DaySelectionFormField extends FormField<List<bool>> {
+  DaySelectionFormField({super.key, super.initialValue, super.onSaved})
+      : super(builder: (FormFieldState<List<bool>> state) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Repeat On',
+                style: Theme.of(state.context).textTheme.labelLarge,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List<Widget>.generate(
+                      7,
+                      (index) => FilterChip(
+                            label: Text(dayString[index].substring(0, 1)),
+                            labelPadding: const EdgeInsets.all(3),
+                            visualDensity: const VisualDensity(
+                                horizontal: -4, vertical: -4),
+                            selected: state.value?[index] ?? false,
+                            showCheckmark: false,
+                            onSelected: (value) {
+                              if (state.value == null) {
+                                return;
+                              }
+                              List<bool> newValue = state.value!;
+                              newValue[index] = value;
+                              state.didChange(newValue);
+                            },
+                          )),
+                ),
+              )
+            ],
+          );
+        });
+}
 
 DateFormat dateFormat = DateFormat("EEE, MMM d, yyyy");
 DateFormat timeFormat = DateFormat('h:mm a');
@@ -511,11 +605,13 @@ class _IntSliderFormField extends FormField<double> {
 class SwitchFormField extends FormField<bool> {
   final bool initialBool;
   final String label;
+  final void Function(bool value)? onChanged;
 
   SwitchFormField(
       {super.key,
       required this.initialBool,
       required this.label,
+      this.onChanged,
       super.onSaved})
       : super(
             initialValue: initialBool,
@@ -531,6 +627,9 @@ class SwitchFormField extends FormField<bool> {
                   Switch(
                       value: state.value ?? initialBool,
                       onChanged: (value) {
+                        if (onChanged != null) {
+                          onChanged(value);
+                        }
                         state.didChange(value);
                       })
                 ],
@@ -665,7 +764,8 @@ void informUser(BuildContext context, {String? title, String? content}) {
 
 // ids, titles, subtitles, newEntity, newEntityText
 class SelectDialog extends StatefulWidget {
-  final Iterable<String> ids, titles;
+  final Iterable<dynamic> ids;
+  final Iterable<String> titles;
   final Iterable<String?> subtitles;
 
   const SelectDialog({
@@ -680,7 +780,7 @@ class SelectDialog extends StatefulWidget {
 }
 
 class _SelectDialogState extends State<SelectDialog> {
-  Set<String> selectedIds = {};
+  Set<dynamic> selectedIds = {};
 
   @override
   Widget build(BuildContext context) {
@@ -699,7 +799,7 @@ class _SelectDialogState extends State<SelectDialog> {
                 shrinkWrap: true,
                 itemCount: widget.ids.length,
                 itemBuilder: (context, index) {
-                  String id = widget.ids.elementAt(index);
+                  var id = widget.ids.elementAt(index);
                   return GestureDetector(
                       onTap: () {
                         setState(() {

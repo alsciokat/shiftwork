@@ -438,18 +438,33 @@ class EditGroupPart extends StatelessWidget {
               const ContentDivider(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: IntSliderFormField(
-                  formFieldKey: sliderFormFieldKey,
-                  context: context,
-                  initialInt: group.maximumAvailable,
-                  max: group.memberIds.length,
-                  label: "Maximum Available at Once",
-                  onSaved: (newValue) {
-                    if (newValue == null) {
-                      return;
-                    }
-                    group.maximumAvailable = newValue.round();
-                  },
+                child: Column(
+                  children: [
+                    IntSliderFormField(
+                      formFieldKey: sliderFormFieldKey,
+                      context: context,
+                      initialInt: group.maximumAvailable,
+                      max: group.memberIds.length,
+                      label: "Maximum Available at Once",
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        group.maximumAvailable = newValue.round();
+                      },
+                    ),
+                    LeniencyFormField(
+                      label: 'Maximum Available Leniency',
+                      initialValue: group.maximumAvailableLeniency,
+                      allowInherit: true,
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        group.maximumAvailableLeniency = newValue;
+                      },
+                    )
+                  ],
                 ),
               ),
               const ContentDivider(),
@@ -484,8 +499,8 @@ class EditGroupPart extends StatelessWidget {
                                           ],
                                         ));
                               } else {
-                                Future<Set<String>?> newMemberIds =
-                                    showDialog<Set<String>>(
+                                Future<Set<dynamic>?> newMemberIds =
+                                    showDialog<Set<dynamic>>(
                                   context: context,
                                   builder: (BuildContext context) =>
                                       SelectDialog(
@@ -506,7 +521,9 @@ class EditGroupPart extends StatelessWidget {
                                   dataController
                                       .getGroup(groupId)
                                       .memberIds
-                                      .addAll(ids);
+                                      .addAll(ids.map(
+                                        (e) => e as String,
+                                      ));
                                   dataController.notify();
                                 });
                               }

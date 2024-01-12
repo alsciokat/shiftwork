@@ -330,13 +330,52 @@ class DataController extends ChangeNotifier {
     Leniency gFixedGroupLeniency;
     int efgl = 0;
     Leniency gMaximumAvailableLeniency = shift.maximumAvailableLeniency;
-    List<Work> worksLeft = shift.workIds.map<Work>((workId) {
-      Work work = getWork(workId);
+    List<Work> worksLeft = [];
+
+    // Find all the works that need to be done
+    for (Work work in shift.workIds.map((workId) => getWork(workId))) {
       work.memberIds = [];
-      return work;
-    }).toList();
+      work.repeatedWorks = [];
+      worksLeft.add(work);
+
+      if (work.repeatOn.any((element) => element)) {
+        for (DateTime date = work.startDateTime.add(const Duration(days: 1));
+            date.isBefore(work.endRepeatOn) ||
+                date.isAtSameMomentAs(work.endRepeatOn);
+            date = date.add(const Duration(days: 1))) {
+          if (work.repeatOn[date.weekday - 1]) {
+            Work repeatedWork = Work(
+                id: genId(),
+                name: work.name,
+                description: 'Repeated',
+                load: work.load,
+                numberOfMembersNeeded: work.numberOfMembersNeeded,
+                startDateTime: date.copyWith(
+                    hour: work.startDateTime.hour,
+                    minute: work.startDateTime.minute),
+                endDateTime: date
+                    .copyWith(
+                        hour: work.startDateTime.hour,
+                        minute: work.startDateTime.minute)
+                    .add(work.dateTimeInterval.duration),
+                fixedMemberIds: work.fixedMemberIds,
+                fixedMemberLeniency: work.fixedMemberLeniency,
+                fixedGroupIds: work.fixedGroupIds,
+                fixedGroupLeniency: work.fixedGroupLeniency,
+                memberIds: [],
+                allowOverlap: work.allowOverlap);
+
+            work.repeatedWorks.add(repeatedWork);
+            worksLeft.add(repeatedWork);
+          }
+        }
+      }
+    }
     List<Member> members =
         shift.memberIds.map<Member>((memberId) => getMember(memberId)).toList();
+    if (shift.shuffleMembers) {
+      members.shuffle();
+    }
     List<Group> groups =
         shift.groupIds.map<Group>((groupId) => getGroup(groupId)).toList();
     Work nextWork;
@@ -488,6 +527,9 @@ class DataController extends ChangeNotifier {
     new_candidate:
     while (!members.every((member) => member.availablity == notAvailable)) {
       Member candidate = _getCandidateMember(members, at, scheme);
+      if (groups.every((group) => group.availableNow <= 0)) {
+        return candidate;
+      }
       // What if a member is set to notAvailable, but not removed from the group.availableNow counter.
       // ADD: This is actually desirable behavior. It means the group is not constraining but other factors are.
       for (final group in groups) {

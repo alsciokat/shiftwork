@@ -114,7 +114,7 @@ class _EditPageState extends State<EditPage> {
                     informUser(context, title: 'No Group Exists');
                     return;
                   }
-                  Future<Set<String>?> newGroupIds = showDialog<Set<String>>(
+                  Future<Set<dynamic>?> newGroupIds = showDialog<Set<dynamic>>(
                       context: context,
                       builder: (context) {
                         Iterable<Group> groups = dataController
@@ -138,7 +138,7 @@ class _EditPageState extends State<EditPage> {
                     dataController
                         .getShift(widget.shiftId)
                         .groupIds
-                        .addAll(ids);
+                        .addAll(ids.map((e) => e as String));
                     dataController.notify();
                   });
                 },
@@ -188,7 +188,7 @@ class _EditPageState extends State<EditPage> {
                     informUser(context, title: 'No Member Exists');
                     return;
                   }
-                  Future<Set<String>?> newMemberIds = showDialog<Set<String>>(
+                  Future<Set<dynamic>?> newMemberIds = showDialog<Set<dynamic>>(
                       context: context,
                       builder: (context) {
                         Iterable<Member> members = dataController
@@ -212,7 +212,7 @@ class _EditPageState extends State<EditPage> {
                     dataController
                         .getShift(widget.shiftId)
                         .memberIds
-                        .addAll(ids);
+                        .addAll(ids.map((e) => e as String));
                     dataController.notify();
                   });
                 },
@@ -253,38 +253,45 @@ class _EditPageState extends State<EditPage> {
             const Padding(padding: EdgeInsets.only(bottom: 100))
           ]),
         ),
-        Consumer<DataController>(
-            builder: (context, dataController, child) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30),
-                  child: Column(children: [
-                    LeniencyFormField(
-                        label: 'Fixed Member Leniency',
-                        initialValue: dataController
-                            .getShift(widget.shiftId)
-                            .fixedMemberLeniency,
-                        onChanged: (value) {
-                          if (value != null) {
-                            dataController
-                                .getShift(widget.shiftId)
-                                .fixedMemberLeniency = value;
-                            dataController.notify();
-                          }
-                        }),
-                    LeniencyFormField(
-                        label: 'Fixed Group Leniency',
-                        initialValue: dataController
-                            .getShift(widget.shiftId)
-                            .fixedGroupLeniency,
-                        onChanged: (value) {
-                          if (value != null) {
-                            dataController
-                                .getShift(widget.shiftId)
-                                .fixedGroupLeniency = value;
-                            dataController.notify();
-                          }
-                        }),
-                  ]),
-                ))
+        Consumer<DataController>(builder: (context, dataController, child) {
+          Shift shift = dataController.getShift(widget.shiftId);
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Column(children: [
+              LeniencyFormField(
+                  label: 'Fixed Member Leniency Default',
+                  initialValue: shift.fixedMemberLeniency,
+                  onChanged: (value) {
+                    if (value != null) {
+                      shift.fixedMemberLeniency = value;
+                    }
+                  }),
+              LeniencyFormField(
+                  label: 'Fixed Group Leniency Default',
+                  initialValue: shift.fixedGroupLeniency,
+                  onChanged: (value) {
+                    if (value != null) {
+                      shift.fixedGroupLeniency = value;
+                    }
+                  }),
+              LeniencyFormField(
+                  label: 'Maximum Available Leniency Default',
+                  initialValue: shift.maximumAvailableLeniency,
+                  onChanged: (value) {
+                    if (value != null) {
+                      shift.maximumAvailableLeniency = value;
+                    }
+                  }),
+              SwitchFormField(
+                initialBool: shift.shuffleMembers,
+                label: 'Shuffle Members',
+                onChanged: (value) {
+                  shift.shuffleMembers = value;
+                },
+              )
+            ]),
+          );
+        })
       ][currentPageIndex],
       floatingActionButton: currentPageIndex == 2
           ? null
