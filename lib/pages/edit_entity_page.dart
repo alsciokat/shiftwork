@@ -549,8 +549,7 @@ class EditGroupPart extends StatelessWidget {
                         return dataController.removeMemberFromGroup(
                             groupId, memberId);
                       },
-                      deletable: true,
-                      deleteEntity: dataController.deleteMember,
+                      deletable: false,
                     );
                   })
             ],

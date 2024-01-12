@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shift_work/comp.dart';
 import 'package:shift_work/pages/show_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core.dart';
 import '../data.dart';
 import 'edit_page.dart';
+import 'about_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -13,7 +15,9 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        title: const Text('ShiftWork'),
+      ),
       drawer: const SideBar(),
       body: Column(
         children: [
@@ -57,31 +61,53 @@ class SideBar extends StatelessWidget {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
-        children: const <Widget>[
-          DrawerHeader(
+        physics: const NeverScrollableScrollPhysics(),
+        children: <Widget>[
+          const DrawerHeader(
             decoration: BoxDecoration(
-              color: Colors.lightBlue,
+              color: Colors.white,
             ),
-            child: Text(
-              'Drawer Header',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: Icon(Icons.message),
-            title: Text('Messages'),
-          ),
-          ListTile(
-            leading: Icon(Icons.account_circle),
-            title: Text('Profile'),
+            child: Image(image: AssetImage('assets/icon.png')),
           ),
           ListTile(
             leading: Icon(Icons.settings),
             title: Text('Settings'),
           ),
+          InkWell(
+            onTap: () {
+              final Uri url =
+                  Uri.parse('https://github.com/alsciaukat/ShiftWork');
+              launchUrl(url);
+            },
+            child: const ListTile(
+              leading: Icon(Icons.help),
+              title: Text('Help'),
+            ),
+          ),
+          InkWell(
+            onTap: () {
+              final Uri url = Uri.parse(
+                  'mailto:alsciokat@gmail.com?subject=ShiftWork%20Feedback&body=Thank%20you%20for%20your%20feedback%20in%20advance!');
+              launchUrl(url);
+            },
+            child: const ListTile(
+              leading: Icon(Icons.feedback),
+              title: Text('Feedback'),
+            ),
+          ),
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AboutPage(),
+                  ));
+            },
+            child: const ListTile(
+              leading: Icon(Icons.info),
+              title: Text('About'),
+            ),
+          )
         ],
       ),
     );

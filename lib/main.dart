@@ -25,7 +25,7 @@ class ShiftWork extends StatelessWidget {
       title: 'ShiftWork',
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: const Color.fromARGB(255, 78, 137, 247),
+        colorSchemeSeed: const Color.fromARGB(255, 72, 166, 252),
       ),
       home: const HomePage(),
     );
