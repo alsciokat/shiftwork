@@ -35,27 +35,6 @@ class _EditEntityPageState extends State<EditEntityPage> {
     pageNumber = widget.initialPage;
   }
 
-  void save(DataController dataController) {
-    if (pageNumber == 0) {
-      memberFormKey.currentState?.save();
-      dataController.saveTempMember();
-      if (!dataController
-          .getShift(widget.shiftId)
-          .memberIds
-          .contains(memberId)) {
-        dataController.addMember(widget.shiftId, memberId);
-      }
-    } else if (pageNumber == 1) {
-      groupFormKey.currentState?.save();
-      dataController.saveTempGroup();
-      if (!dataController.getShift(widget.shiftId).groupIds.contains(groupId)) {
-        dataController.addGrouop(widget.shiftId, groupId);
-      }
-    } else {
-      return;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     PageController controller =
@@ -69,26 +48,62 @@ class _EditEntityPageState extends State<EditEntityPage> {
           TextButton(
             child: const Text('Save'),
             onPressed: () {
-              save(dataController);
-              dataController.notify().flush();
-              informUser(context, title: 'Saved');
-              setState(() {
-                if (pageNumber == 0) {
-                  memberId = genId();
-                } else if (pageNumber == 1) {
-                  groupId = genId();
+              Shift shift = dataController.getShift(widget.shiftId);
+              if (pageNumber == 0) {
+                memberFormKey.currentState?.save();
+                dataController.saveTempMember();
+                if (!shift.memberIds.contains(memberId)) {
+                  dataController.addMember(widget.shiftId, memberId);
                 }
-              });
+              } else if (pageNumber == 1) {
+                groupFormKey.currentState?.save();
+                dataController.saveTempGroup();
+                if (!shift.groupIds.contains(groupId)) {
+                  dataController.addGrouop(widget.shiftId, groupId);
+                }
+              } else {
+                return;
+              }
+              dataController.saveTempShift().notify().flush();
+              Future<bool?> quit = showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                        title: const Text('Saved'),
+                        content: Text(
+                            'Quit or Keep editing with new ${pageNumber == 0 ? 'member' : 'group'}?'),
+                        actions: [
+                          TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop(false);
+                              },
+                              child: const Text('Keep Editing')),
+                          TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop(true);
+                              },
+                              child: const Text('Quit'))
+                        ],
+                      ));
+              quit.then(
+                (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  if (value) {
+                    Navigator.of(context).pop();
+                  } else {
+                    setState(() {
+                      if (pageNumber == 0) {
+                        memberId = genId();
+                      } else if (pageNumber == 1) {
+                        groupId = genId();
+                      }
+                    });
+                  }
+                },
+              );
             },
           ),
-          TextButton(
-            child: const Text('Save and Quit'),
-            onPressed: () {
-              save(dataController);
-              dataController.notify().flush();
-              Navigator.of(context).pop();
-            },
-          )
         ]),
         body: Column(children: [
           EntityHeader(
@@ -172,18 +187,21 @@ class EntityHeader extends StatelessWidget {
                 ),
               ),
             ),
-            Transform.scale(
-              scale: .7,
-              child: SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment<int>(value: 0, label: Text('Member')),
-                  ButtonSegment<int>(value: 1, label: Text('Group')),
-                ],
-                selected: {selected},
-                onSelectionChanged: (Set<int> selected) {
-                  onSelectionChanged(selected.first);
-                },
-                showSelectedIcon: false,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Transform.scale(
+                scale: .7,
+                child: SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment<int>(value: 0, label: Text('Member')),
+                    ButtonSegment<int>(value: 1, label: Text('Group')),
+                  ],
+                  selected: {selected},
+                  onSelectionChanged: (Set<int> selected) {
+                    onSelectionChanged(selected.first);
+                  },
+                  showSelectedIcon: false,
+                ),
               ),
             )
           ],
@@ -206,13 +224,12 @@ class EditMemberPart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final preloadFormFieldKey = GlobalKey<FormFieldState<String>>();
     return Form(
       key: formKey,
       child:
           Consumer<DataController>(builder: (context, dataController, child) {
         Member member = dataController.getMember(memberId);
-
-        // TODO: Create CustomScrollView to denest the scrolls.
         return ListView(
           children: [
             Padding(
@@ -249,26 +266,95 @@ class EditMemberPart extends StatelessWidget {
               ),
             ),
             const ContentDivider(),
-            ListView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                itemCount: member.vacancyIds.length + 1,
-                itemBuilder: (context, index) {
-                  List<String> vacancyIds = member.vacancyIds;
-                  if (index >= vacancyIds.length) {
-                    return Padding(
-                        padding: const EdgeInsets.only(bottom: 100),
-                        child: NewListItem(
-                          label: 'Add New Vacation',
-                          onTap: () {
-                            Iterable<Vacancy> otherVacancies =
-                                dataController.getAllOtherVacancies(memberId);
-                            if (otherVacancies.isEmpty) {
-                              String vacancyId = genId();
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 30.0, vertical: 8),
+              child: NumFormField(
+                formFieldKey: preloadFormFieldKey,
+                initialNum: member.preload,
+                min: -10000,
+                max: 10000,
+                label: 'Works Done Before',
+                onSaved: (value) {
+                  member.preload = value.toDouble();
+                },
+              ),
+            ),
+            const ContentDivider(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 100),
+              child: ListView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: member.vacancyIds.length + 1,
+                  itemBuilder: (context, index) {
+                    List<String> vacancyIds = member.vacancyIds;
+                    if (index >= vacancyIds.length) {
+                      return NewListItem(
+                        label: 'Add New Vacation',
+                        onTap: () {
+                          Iterable<Vacancy> otherVacancies =
+                              dataController.getAllOtherVacancies(memberId);
+                          if (otherVacancies.isEmpty) {
+                            String vacancyId = genId();
+                            Future<bool?> saved = showDialog<bool>(
+                                context: context,
+                                builder: (BuildContext context) =>
+                                    EditVacancyDialog(vacancyId: vacancyId));
+                            saved.then((value) {
+                              if (value == null) {
+                                return;
+                              }
+                              if (value) {
+                                dataController
+                                    .saveTempVacancy()
+                                    .addVacancy(memberId, vacancyId)
+                                    .notify();
+                              }
+                            });
+                            return;
+                          }
+                          Future<String?> vacancyId = showDialog<String>(
+                              context: context,
+                              builder: (BuildContext context) {
+                                List<SimpleDialogOption> children = [];
+                                children.add(SimpleDialogOption(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(defaultId);
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text('New Vacation'),
+                                  ),
+                                ));
+                                children.addAll(otherVacancies.map(
+                                  (e) => SimpleDialogOption(
+                                    onPressed: () {
+                                      Navigator.of(context).pop(e.id);
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(e.name),
+                                    ),
+                                  ),
+                                ));
+                                return SimpleDialog(
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 24),
+                                  children: children,
+                                );
+                              });
+                          vacancyId.then((id) {
+                            if (id == null || member.vacancyIds.contains(id)) {
+                              return;
+                            }
+                            if (id == defaultId) {
+                              String newId = genId();
                               Future<bool?> saved = showDialog<bool>(
                                   context: context,
-                                  builder: (BuildContext context) =>
-                                      EditVacancyDialog(vacancyId: vacancyId));
+                                  builder: (context) => EditVacancyDialog(
+                                        vacancyId: newId,
+                                      ));
                               saved.then((value) {
                                 if (value == null) {
                                   return;
@@ -276,105 +362,51 @@ class EditMemberPart extends StatelessWidget {
                                 if (value) {
                                   dataController
                                       .saveTempVacancy()
-                                      .addVacancy(memberId, vacancyId)
+                                      .addVacancy(memberId, newId)
                                       .notify();
                                 }
                               });
                               return;
                             }
-                            Future<String?> vacancyId = showDialog<String>(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  List<SimpleDialogOption> children = [];
-                                  children.add(SimpleDialogOption(
-                                    onPressed: () {
-                                      Navigator.of(context).pop(defaultId);
-                                    },
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text('New Vacation'),
-                                    ),
-                                  ));
-                                  children.addAll(otherVacancies.map(
-                                    (e) => SimpleDialogOption(
-                                      onPressed: () {
-                                        Navigator.of(context).pop(e.id);
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Text(e.name),
-                                      ),
-                                    ),
-                                  ));
-                                  return SimpleDialog(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        vertical: 24),
-                                    children: children,
-                                  );
-                                });
-                            vacancyId.then((id) {
-                              if (id == null ||
-                                  member.vacancyIds.contains(id)) {
-                                return;
-                              }
-                              if (id == defaultId) {
-                                String newId = genId();
-                                Future<bool?> saved = showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => EditVacancyDialog(
-                                          vacancyId: newId,
-                                        ));
-                                saved.then((value) {
-                                  if (value == null) {
-                                    return;
-                                  }
-                                  if (value) {
-                                    dataController
-                                        .saveTempVacancy()
-                                        .addVacancy(memberId, newId)
-                                        .notify();
-                                  }
-                                });
-                                return;
-                              }
-                              dataController.addVacancy(memberId, id).notify();
-                            });
-                          },
-                        ));
-                  }
-                  Vacancy vacancy =
-                      dataController.getVacancy(vacancyIds[index]);
-                  String description = '';
-                  if (vacancy.description != '') {
-                    description += '${vacancy.description}, ';
-                  }
-                  description += getSubtitle(vacancy);
-                  return ListItem(
-                    entityId: vacancy.id,
-                    entityName: vacancy.name,
-                    entityDescription: description,
-                    entityIcon: const Icon(Icons.beach_access),
-                    parentId: memberId,
-                    onTap: (context) {
-                      Future<bool?> saved = showDialog<bool>(
-                          context: context,
-                          builder: (context) => EditVacancyDialog(
-                                vacancyId: vacancy.id,
-                              ));
-                      saved.then((value) {
-                        if (value == null) {
-                          return;
-                        }
-                        if (value) {
-                          dataController.saveTempVacancy().notify();
-                        }
-                      });
-                    },
-                    removeEntity: dataController.removeVacancy,
-                    deletable: true,
-                    deleteEntity: dataController.deleteVacancy,
-                  );
-                })
+                            dataController.addVacancy(memberId, id).notify();
+                          });
+                        },
+                      );
+                    }
+                    Vacancy vacancy =
+                        dataController.getVacancy(vacancyIds[index]);
+                    String description = '';
+                    if (vacancy.description != '') {
+                      description += '${vacancy.description}, ';
+                    }
+                    description += getSubtitle(vacancy);
+                    return ListItem(
+                      entityId: vacancy.id,
+                      entityName: vacancy.name,
+                      entityDescription: description,
+                      entityIcon: const Icon(Icons.beach_access),
+                      parentId: memberId,
+                      onTap: (context) {
+                        Future<bool?> saved = showDialog<bool>(
+                            context: context,
+                            builder: (context) => EditVacancyDialog(
+                                  vacancyId: vacancy.id,
+                                ));
+                        saved.then((value) {
+                          if (value == null) {
+                            return;
+                          }
+                          if (value) {
+                            dataController.saveTempVacancy().notify();
+                          }
+                        });
+                      },
+                      removeEntity: dataController.removeVacancy,
+                      deletable: true,
+                      deleteEntity: dataController.deleteVacancy,
+                    );
+                  }),
+            )
           ],
         );
       }),
@@ -468,90 +500,91 @@ class EditGroupPart extends StatelessWidget {
                 ),
               ),
               const ContentDivider(),
-              ListView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  itemCount: group.memberIds.length + 1,
-                  itemBuilder: (context, index) {
-                    List<String> memberIds = group.memberIds;
-                    if (index >= memberIds.length) {
-                      return Padding(
-                          padding: const EdgeInsets.only(bottom: 100),
-                          child: NewListItem(
-                            label: 'Add a Member',
-                            onTap: () {
-                              Iterable<Member> otherMembers =
-                                  dataController.getAllOtherMembers(groupId);
-                              if (otherMembers.isEmpty) {
-                                showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) =>
-                                        AlertDialog(
-                                          title: const Text('Attention'),
-                                          content: const Text(
-                                              'There is no member to add.\nPlease create one first.'),
-                                          actions: [
-                                            TextButton(
-                                                onPressed: () {
-                                                  Navigator.of(context).pop();
-                                                },
-                                                child: const Text('Close')),
-                                          ],
-                                        ));
-                              } else {
-                                Future<Set<dynamic>?> newMemberIds =
-                                    showDialog<Set<dynamic>>(
+              Padding(
+                padding: const EdgeInsets.only(bottom: 100),
+                child: ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: group.memberIds.length + 1,
+                    itemBuilder: (context, index) {
+                      List<String> memberIds = group.memberIds;
+                      if (index >= memberIds.length) {
+                        return NewListItem(
+                          label: 'Add a Member',
+                          onTap: () {
+                            Iterable<Member> otherMembers =
+                                dataController.getAllOtherMembers(groupId);
+                            if (otherMembers.isEmpty) {
+                              showDialog(
                                   context: context,
                                   builder: (BuildContext context) =>
-                                      SelectDialog(
-                                    ids: otherMembers.map(
-                                      (e) => e.id,
-                                    ),
-                                    titles: otherMembers.map((e) => e.name),
-                                    subtitles: otherMembers.map((e) =>
-                                        (e.description == '')
-                                            ? null
-                                            : e.description),
-                                  ),
-                                );
-                                newMemberIds.then((ids) {
-                                  if (ids == null) {
-                                    return;
-                                  }
-                                  dataController
-                                      .getGroup(groupId)
-                                      .memberIds
-                                      .addAll(ids.map(
-                                        (e) => e as String,
+                                      AlertDialog(
+                                        title: const Text('Attention'),
+                                        content: const Text(
+                                            'There is no member to add.\nPlease create one first.'),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop(true);
+                                              },
+                                              child: const Text('Close')),
+                                        ],
                                       ));
-                                  dataController.notify();
-                                });
-                              }
-                            },
-                          ));
-                    }
+                            } else {
+                              Future<Set<dynamic>?> newMemberIds =
+                                  showDialog<Set<dynamic>>(
+                                context: context,
+                                builder: (BuildContext context) => SelectDialog(
+                                  ids: otherMembers.map(
+                                    (e) => e.id,
+                                  ),
+                                  titles: otherMembers.map((e) => e.name),
+                                  subtitles: otherMembers.map((e) =>
+                                      (e.description == '')
+                                          ? null
+                                          : e.description),
+                                ),
+                              );
+                              newMemberIds.then((ids) {
+                                if (ids == null) {
+                                  return;
+                                }
+                                dataController
+                                    .getGroup(groupId)
+                                    .memberIds
+                                    .addAll(ids.map(
+                                      (e) => e as String,
+                                    ));
+                                dataController.notify();
+                              });
+                            }
+                          },
+                        );
+                      }
 
-                    Member member = dataController.getMember(memberIds[index]);
-                    return ListItem(
-                      entityId: memberIds[index],
-                      entityName: member.name,
-                      entityDescription: member.description,
-                      entityIcon: const Icon(Icons.person),
-                      parentId: groupId,
-                      onTap: (context) {
-                        onMemberTap(member.id);
-                      },
-                      removeEntity: (groupId, memberId) {
-                        if (sliderFormFieldKey.currentState != null) {
-                          changeIntSliderFormFieldState(
-                              sliderFormFieldKey.currentState!, -1);
-                        }
-                        return dataController.removeMemberFromGroup(
-                            groupId, memberId);
-                      },
-                      deletable: false,
-                    );
-                  })
+                      Member member =
+                          dataController.getMember(memberIds[index]);
+                      return ListItem(
+                        entityId: memberIds[index],
+                        entityName: member.name,
+                        entityDescription: member.description,
+                        entityIcon: const Icon(Icons.person),
+                        parentId: groupId,
+                        onTap: (context) {
+                          onMemberTap(member.id);
+                        },
+                        removeEntity: (groupId, memberId) {
+                          if (sliderFormFieldKey.currentState != null) {
+                            changeIntSliderFormFieldState(
+                                sliderFormFieldKey.currentState!, -1);
+                          }
+                          return dataController.removeMemberFromGroup(
+                              groupId, memberId);
+                        },
+                        deletable: false,
+                      );
+                    }),
+              )
             ],
           );
         },

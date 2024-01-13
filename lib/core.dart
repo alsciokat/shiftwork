@@ -376,7 +376,7 @@ class Member extends IObject {
       {GetLoadScheme scheme = GetLoadScheme.plain,
       DateTime? workStartDateTime}) {
     if (scheme == GetLoadScheme.plain) {
-      return previousTotalLoad + previousLoad;
+      return preload + previousTotalLoad + previousLoad;
     }
     if (scheme == GetLoadScheme.fatigue) {
       if (workStartDateTime == null) {
@@ -396,7 +396,9 @@ class Member extends IObject {
   }
 
   double _calculateLoad(Duration duration) {
-    return previousTotalLoad + previousLoad * weight(duration.inMinutes);
+    return preload +
+        previousTotalLoad +
+        previousLoad * weight(duration.inMinutes);
   }
 
   double weight(int t) {

@@ -45,7 +45,9 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ),
-          const HomeBannerAd(),
+          const BannerAdUnit(
+            unitId: "ca-app-pub-7340749292526171/4946793048",
+          ),
         ],
       ),
     );

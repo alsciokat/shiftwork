@@ -44,13 +44,13 @@ class _EditWorkPageState extends State<EditWorkPage> {
                       .contains(widget.workId)) {
                     dataController.addWork(widget.shiftId, widget.workId);
                   }
-                  dataController.notify().flush();
-                  Navigator.of(context).pop(widget.workId);
+                  dataController.saveTempShift().notify().flush();
+                  Navigator.of(context).pop(true);
                 }
               },
             ),
           ]),
-          body: ListView(children: [
+          body: ListView(cacheExtent: 800, children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 30.0),
               child: Column(
@@ -223,7 +223,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                         builder: (state) {
                           return Padding(
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
+                                  const EdgeInsets.symmetric(vertical: 12.0),
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -258,8 +258,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                                         });
                                       },
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8),
+                                        padding: const EdgeInsets.only(top: 8),
                                         child: Text(
                                             state.value?.isNotEmpty == true
                                                 ? state.value!
@@ -295,7 +294,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                         builder: (state) {
                           return Padding(
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
+                                  const EdgeInsets.symmetric(vertical: 12.0),
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -329,8 +328,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                                         });
                                       },
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8),
+                                        padding: const EdgeInsets.only(top: 8),
                                         child: Text(state.value?.isNotEmpty ==
                                                 true
                                             ? state.value!

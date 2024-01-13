@@ -5,14 +5,15 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'core.dart';
 import 'data.dart';
 
-class HomeBannerAd extends StatefulWidget {
-  const HomeBannerAd({super.key});
+class BannerAdUnit extends StatefulWidget {
+  final String unitId;
+  const BannerAdUnit({super.key, required this.unitId});
 
   @override
-  State<HomeBannerAd> createState() => _HomeBannerAdState();
+  State<BannerAdUnit> createState() => _BannerAdUnitState();
 }
 
-class _HomeBannerAdState extends State<HomeBannerAd> {
+class _BannerAdUnitState extends State<BannerAdUnit> {
   BannerAd? adContent;
 
   @override
@@ -20,7 +21,7 @@ class _HomeBannerAdState extends State<HomeBannerAd> {
     super.initState();
     final bannerAd = BannerAd(
       size: AdSize.banner,
-      adUnitId: "ca-app-pub-7340749292526171/4946793048",
+      adUnitId: widget.unitId,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           setState(() {
@@ -66,13 +67,13 @@ class StringFormField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // FocusNode focusNode = FocusNode();
-    TextEditingController controller = TextEditingController(text: initialText);
+    // TextEditingController controller = TextEditingController(text: initialText);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.only(top: 4, bottom: 12.0),
       child: TextFormField(
         key: formKey,
-        controller: controller,
+        initialValue: initialText,
         // focusNode: focusNode,
         decoration: InputDecoration(
           label: (label == null) ? null : Text(label!),
@@ -101,7 +102,7 @@ class LeniencyFormField extends FormField<Leniency> {
       super.onSaved})
       : super(builder: (FormFieldState<Leniency> state) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            padding: const EdgeInsets.only(top: 12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -116,6 +117,8 @@ class LeniencyFormField extends FormField<Leniency> {
                           Radio<Leniency>(
                             value: Leniency.inherit,
                             groupValue: state.value ?? initialValue,
+                            visualDensity: const VisualDensity(
+                                horizontal: -4, vertical: -4),
                             onChanged: allowInherit == true
                                 ? (value) {
                                     state.didChange(value);
@@ -125,7 +128,10 @@ class LeniencyFormField extends FormField<Leniency> {
                                   }
                                 : null,
                           ),
-                          const Text('Inherit')
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8.0),
+                            child: Text('Inherit'),
+                          )
                         ]),
                         Row(
                           children: [
@@ -209,38 +215,41 @@ String convertRepeatOnToString(List<bool>? repeatOn) {
 class DaySelectionFormField extends FormField<List<bool>> {
   DaySelectionFormField({super.key, super.initialValue, super.onSaved})
       : super(builder: (FormFieldState<List<bool>> state) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Repeat On',
-                style: Theme.of(state.context).textTheme.labelLarge,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List<Widget>.generate(
-                      7,
-                      (index) => FilterChip(
-                            label: Text(dayString[index].substring(0, 1)),
-                            labelPadding: const EdgeInsets.all(3),
-                            visualDensity: const VisualDensity(
-                                horizontal: -4, vertical: -4),
-                            selected: state.value?[index] ?? false,
-                            showCheckmark: false,
-                            onSelected: (value) {
-                              if (state.value == null) {
-                                return;
-                              }
-                              List<bool> newValue = state.value!;
-                              newValue[index] = value;
-                              state.didChange(newValue);
-                            },
-                          )),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Repeat On',
+                  style: Theme.of(state.context).textTheme.labelLarge,
                 ),
-              )
-            ],
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List<Widget>.generate(
+                        7,
+                        (index) => FilterChip(
+                              label: Text(dayString[index].substring(0, 1)),
+                              labelPadding: const EdgeInsets.all(3),
+                              visualDensity: const VisualDensity(
+                                  horizontal: -4, vertical: -4),
+                              selected: state.value?[index] ?? false,
+                              showCheckmark: false,
+                              onSelected: (value) {
+                                if (state.value == null) {
+                                  return;
+                                }
+                                List<bool> newValue = state.value!;
+                                newValue[index] = value;
+                                state.didChange(newValue);
+                              },
+                            )),
+                  ),
+                )
+              ],
+            ),
           );
         });
 }
@@ -330,8 +339,7 @@ class DateTimeFormField extends FormField<DateTime> {
                       });
                     },
                     child: Padding(
-                      padding:
-                          const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                      padding: const EdgeInsets.only(right: 8, top: 8),
                       child: Text(
                         dateFormat.format(state.value ?? initialDateTime),
                         style: Theme.of(state.context).textTheme.bodyLarge,
@@ -360,8 +368,7 @@ class DateTimeFormField extends FormField<DateTime> {
                       });
                     },
                     child: Padding(
-                      padding:
-                          const EdgeInsets.only(left: 8, top: 8, bottom: 8),
+                      padding: const EdgeInsets.only(left: 8, top: 8),
                       child: Text(
                           timeFormat.format(state.value ?? initialDateTime),
                           style: Theme.of(state.context).textTheme.bodyLarge),
@@ -369,7 +376,7 @@ class DateTimeFormField extends FormField<DateTime> {
               ],
             ));
             return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: children));
@@ -410,11 +417,12 @@ class NumFormField extends StatelessWidget {
     if (intOnly) {
       textInputType = TextInputType.number;
     } else {
-      textInputType = const TextInputType.numberWithOptions(decimal: true);
+      textInputType =
+          const TextInputType.numberWithOptions(signed: true, decimal: true);
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Expanded(
@@ -424,7 +432,7 @@ class NumFormField extends StatelessWidget {
                 style: Theme.of(context).textTheme.labelLarge,
               )),
           SizedBox(
-            width: 90,
+            width: 70,
             height: 50,
             child: TextFormField(
               key: formFieldKey,
@@ -442,7 +450,7 @@ class NumFormField extends StatelessWidget {
                     baseOffset: 0, extentOffset: controller.text.length);
               },
               onChanged: (value) {
-                if (value == '') {
+                if (value == '' || value == '-') {
                   return;
                 }
                 num? numValue;
@@ -544,6 +552,9 @@ class IntSliderFormField extends StatelessWidget {
       initialValue = min.toDouble();
       disabled = true;
     }
+    if (initialInt == -1) {
+      initialValue = max.toDouble();
+    }
 
     return _IntSliderFormField(
       key: formFieldKey,
@@ -583,21 +594,26 @@ class _IntSliderFormField extends FormField<double> {
                 };
               }
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(state.context).textTheme.labelLarge,
-                  ),
-                  Slider(
-                    value: state.value ?? initialValue,
-                    max: max.toDouble(),
-                    divisions: division,
-                    label: getLabel(state.value ?? initialValue),
-                    onChanged: onChanged,
-                  )
-                ],
+              return Padding(
+                padding: const EdgeInsets.only(
+                  top: 12.0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: Theme.of(state.context).textTheme.labelLarge,
+                    ),
+                    Slider(
+                      value: state.value ?? initialValue,
+                      max: max.toDouble(),
+                      divisions: division,
+                      label: getLabel(state.value ?? initialValue),
+                      onChanged: onChanged,
+                    )
+                  ],
+                ),
               );
             });
 }
@@ -616,23 +632,26 @@ class SwitchFormField extends FormField<bool> {
       : super(
             initialValue: initialBool,
             builder: (FormFieldState<bool> state) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: Theme.of(state.context).textTheme.labelLarge,
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: Theme.of(state.context).textTheme.labelLarge,
+                      ),
                     ),
-                  ),
-                  Switch(
-                      value: state.value ?? initialBool,
-                      onChanged: (value) {
-                        if (onChanged != null) {
-                          onChanged(value);
-                        }
-                        state.didChange(value);
-                      })
-                ],
+                    Switch(
+                        value: state.value ?? initialBool,
+                        onChanged: (value) {
+                          if (onChanged != null) {
+                            onChanged(value);
+                          }
+                          state.didChange(value);
+                        })
+                  ],
+                ),
               );
             });
 }
@@ -853,7 +872,7 @@ class ContentDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(
-      height: 30,
+      height: 8,
       indent: 10,
       endIndent: 10,
     );

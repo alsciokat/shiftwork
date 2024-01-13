@@ -71,12 +71,15 @@ class _EditPageState extends State<EditPage> {
           int groupLength = shift.groupIds.length;
           int memberLength = shift.memberIds.length;
           bool otherGroup = dataController.data.groupData.objectOrder
-              .where((element) => !shift.groupIds.contains(element))
-              .isNotEmpty;
+              .any((element) => !shift.groupIds.contains(element));
           bool otherMember = dataController.data.memberData.objectOrder
-              .where((element) => !shift.memberIds.contains(element))
-              .isNotEmpty;
+              .any((element) => !shift.memberIds.contains(element));
           List<Widget> children = [];
+          children.add(const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child:
+                BannerAdUnit(unitId: 'ca-app-pub-7340749292526171/1494772810'),
+          ));
           if (groupLength > 0) {
             children.add(ListView.builder(
               physics: const NeverScrollableScrollPhysics(),
@@ -139,7 +142,7 @@ class _EditPageState extends State<EditPage> {
                         .getShift(widget.shiftId)
                         .groupIds
                         .addAll(ids.map((e) => e as String));
-                    dataController.notify();
+                    dataController.saveTempShift().notify();
                   });
                 },
                 label: 'Select Group'));
@@ -213,7 +216,7 @@ class _EditPageState extends State<EditPage> {
                         .getShift(widget.shiftId)
                         .memberIds
                         .addAll(ids.map((e) => e as String));
-                    dataController.notify();
+                    dataController.saveTempShift().notify();
                   });
                 },
                 label: 'Select Member'));
@@ -223,15 +226,25 @@ class _EditPageState extends State<EditPage> {
             children: children,
           );
         }),
-        Consumer<DataController>(
-          builder: (context, dataController, child) => ListView(children: [
+        Consumer<DataController>(builder: (context, dataController, child) {
+          Shift shift = dataController.getShift(widget.shiftId);
+          bool otherWork = false;
+          if (dataController.data.workData.objectOrder
+              .any((workId) => !shift.workIds.contains(workId))) {
+            otherWork = true;
+          }
+          return ListView(children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: BannerAdUnit(
+                  unitId: 'ca-app-pub-7340749292526171/4711128947'),
+            ),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: dataController.getShift(widget.shiftId).workIds.length,
+              itemCount: shift.workIds.length,
               itemBuilder: ((context, index) {
-                Work work = dataController.getWork(
-                    dataController.getShift(widget.shiftId).workIds[index]);
+                Work work = dataController.getWork(shift.workIds[index]);
                 return ListItem(
                   entityId: work.id,
                   entityName: work.name,
@@ -250,9 +263,46 @@ class _EditPageState extends State<EditPage> {
                 );
               }),
             ),
+            otherWork
+                ? NewListItem(
+                    onTap: () {
+                      if (dataController.data.workData.objectOrder.isEmpty) {
+                        informUser(context, title: 'No Work Exists');
+                        return;
+                      }
+                      Future<Set<dynamic>?> newWorkIds =
+                          showDialog<Set<dynamic>>(
+                              context: context,
+                              builder: (context) {
+                                Iterable<Work> works = dataController
+                                    .data.workData.objectOrder
+                                    .where((element) =>
+                                        !shift.workIds.contains(element))
+                                    .map(
+                                      (e) => dataController.getWork(e),
+                                    );
+                                return SelectDialog(
+                                  ids: works.map((e) => e.id),
+                                  titles: works.map((e) => e.name),
+                                  subtitles: works.map((e) =>
+                                      (e.description == '')
+                                          ? null
+                                          : e.description),
+                                );
+                              });
+                      newWorkIds.then((ids) {
+                        if (ids == null) {
+                          return;
+                        }
+                        shift.workIds.addAll(ids.map((e) => e as String));
+                        dataController.saveTempShift().notify();
+                      });
+                    },
+                    label: 'Select Work')
+                : const SizedBox(),
             const Padding(padding: EdgeInsets.only(bottom: 100))
-          ]),
-        ),
+          ]);
+        }),
         Consumer<DataController>(builder: (context, dataController, child) {
           Shift shift = dataController.getShift(widget.shiftId);
           return Padding(
@@ -310,7 +360,7 @@ class _EditPageState extends State<EditPage> {
                         initialPage: 0);
                   }));
                 } else if (currentPageIndex == 1) {
-                  Navigator.of(context).push<String>(MaterialPageRoute(
+                  Navigator.of(context).push<bool>(MaterialPageRoute(
                     builder: (context) =>
                         EditWorkPage(shiftId: widget.shiftId, workId: genId()),
                   ));

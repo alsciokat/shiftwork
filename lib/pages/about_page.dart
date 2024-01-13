@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -40,7 +41,31 @@ class AboutPage extends StatelessWidget {
             ]),
           ),
           const Padding(padding: EdgeInsets.only(top: 30)),
-          const Expanded(child: Text('Developed by Jeemin Kim. ©2024.')),
+          Expanded(
+              child: Column(
+            children: [
+              const Text('Developed by Jeemin Kim. ©2024.'),
+              const Padding(padding: EdgeInsets.only(bottom: 12)),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(
+                          const ClipboardData(text: 'alsciokat@gmail.com'))
+                      .then(
+                    (_) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Email address copied to clipboard')));
+                    },
+                  );
+                },
+                child: Text(
+                  'alsciokat@gmail.com',
+                  style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      decoration: TextDecoration.underline),
+                ),
+              )
+            ],
+          )),
           Padding(
             padding: const EdgeInsets.only(bottom: 20.0),
             child: Text(
