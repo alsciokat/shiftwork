@@ -63,6 +63,9 @@ class DataController extends ChangeNotifier {
   void init() {
     ioController.read().then((value) {
       // try {
+      if (value == "") {
+        return;
+      }
       data = Data.fromJson(jsonDecode(value));
       notifyListeners();
       // } catch (error) {
