@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shift_work/comp.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core.dart';
 import '../data.dart';
+import '../comp.dart';
 
 DateFormat dateTimeFormat = DateFormat('EEE, MMM d, h:mm a');
 
@@ -110,10 +111,19 @@ class ShowPage extends StatelessWidget {
                       .writeToExternalStorage('${shift.title}.tsv', csvData)
                       .then((success) {
                     if (success) {
-                      informUser(context,
-                          title: 'Saved',
-                          content:
-                              'Saved to: Internal Storage/Documents/${shift.title}.tsv');
+                      SharedPreferences.getInstance().then((preferences) {
+                        String exportDirectory =
+                            preferences.getString('exportDirectory') ??
+                                '/storage/emulated/0/Documents';
+                        if (exportDirectory.startsWith('/storage/emulated/0')) {
+                          exportDirectory = exportDirectory.replaceFirst(
+                              '/storage/emulated/0', 'Internal Storage');
+                        }
+                        informUser(context,
+                            title: 'Saved',
+                            content:
+                                'Saved to: $exportDirectory/${shift.title}.tsv');
+                      });
                     } else {
                       informUser(context,
                           title: 'Export Failed',

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shift_work/comp.dart';
-import 'package:shift_work/pages/show_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core.dart';
 import '../data.dart';
+import '../comp.dart';
 import 'edit_page.dart';
 import 'about_page.dart';
+import 'show_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -69,9 +70,15 @@ class SideBar extends StatelessWidget {
             ),
             child: Image(image: AssetImage('assets/icon.png')),
           ),
-          ListTile(
-            leading: Icon(Icons.settings),
-            title: Text('Settings'),
+          InkWell(
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const SettingsPage()));
+            },
+            child: const ListTile(
+              leading: Icon(Icons.settings),
+              title: Text('Settings'),
+            ),
           ),
           InkWell(
             onTap: () {

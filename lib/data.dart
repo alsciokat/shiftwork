@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core.dart';
 
@@ -30,8 +31,11 @@ class IOController {
   }
 
   Future<bool> writeToExternalStorage(String fileName, String data) async {
+    final preferences = await SharedPreferences.getInstance();
     if (Platform.isAndroid) {
-      final documentDirectory = Directory("/storage/emulated/0/Documents");
+      final documentDirectory = Directory(
+          preferences.getString('exportDirectory') ??
+              '/storage/emulated/0/Documents');
       final exists = await documentDirectory.exists();
       if (!exists) {
         await documentDirectory.create();
