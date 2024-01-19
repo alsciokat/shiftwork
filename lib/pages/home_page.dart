@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import '../core.dart';
 import '../data.dart';
 import '../comp.dart';
@@ -77,9 +79,9 @@ class SideBar extends StatelessWidget {
               Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) => const SettingsPage()));
             },
-            child: const ListTile(
-              leading: Icon(Icons.settings),
-              title: Text('Settings'),
+            child: ListTile(
+              leading: const Icon(Icons.settings),
+              title: Text(AppLocalizations.of(context)!.settings),
             ),
           ),
           InkWell(
@@ -88,20 +90,20 @@ class SideBar extends StatelessWidget {
                   Uri.parse('https://github.com/alsciaukat/ShiftWork');
               launchUrl(url);
             },
-            child: const ListTile(
-              leading: Icon(Icons.help),
-              title: Text('Help'),
+            child: ListTile(
+              leading: const Icon(Icons.help),
+              title: Text(AppLocalizations.of(context)!.help),
             ),
           ),
           InkWell(
             onTap: () {
               final Uri url = Uri.parse(
-                  'mailto:alsciokat@gmail.com?subject=ShiftWork%20Feedback&body=Thank%20you%20for%20your%20feedback%20in%20advance!');
+                  'mailto:alsciokat@gmail.com?subject=ShiftWork Feedback&body=${AppLocalizations.of(context)!.thanks}');
               launchUrl(url);
             },
-            child: const ListTile(
-              leading: Icon(Icons.feedback),
-              title: Text('Feedback'),
+            child: ListTile(
+              leading: const Icon(Icons.feedback),
+              title: Text(AppLocalizations.of(context)!.feedback),
             ),
           ),
           InkWell(
@@ -112,9 +114,9 @@ class SideBar extends StatelessWidget {
                     builder: (context) => const AboutPage(),
                   ));
             },
-            child: const ListTile(
-              leading: Icon(Icons.info),
-              title: Text('About'),
+            child: ListTile(
+              leading: const Icon(Icons.info),
+              title: Text(AppLocalizations.of(context)!.about),
             ),
           )
         ],
@@ -140,9 +142,9 @@ class NewShiftCard extends StatelessWidget {
                       shiftId: genId(),
                     )));
           },
-          child: const Column(
+          child: Column(
             children: [
-              Padding(
+              const Padding(
                 padding: EdgeInsets.only(top: 124.0),
                 child: Icon(
                   Icons.add,
@@ -151,10 +153,10 @@ class NewShiftCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.only(top: 20.0),
+                padding: const EdgeInsets.only(top: 20.0),
                 child: Text(
-                  "New Shift",
-                  style: TextStyle(fontSize: 16),
+                  AppLocalizations.of(context)!.newShift,
+                  style: const TextStyle(fontSize: 16),
                 ),
               )
             ],
@@ -185,7 +187,7 @@ class ShiftCard extends StatelessWidget {
               .map((id) => dataController.getMember(id).name)
               .join(", ");
           if (memberNames == "") {
-            memberNames = "No Members";
+            memberNames = AppLocalizations.of(context)!.noMembers;
           }
           String workNames = dataController
               .getShift(shiftId)
@@ -193,7 +195,7 @@ class ShiftCard extends StatelessWidget {
               .map((id) => dataController.getWork(id).name)
               .join(", ");
           if (workNames == "") {
-            workNames = "No Works";
+            workNames = AppLocalizations.of(context)!.noWorks;
           }
           bool created = dataController.getShift(shiftId).created;
           return InkWell(
@@ -246,22 +248,28 @@ class ShiftCard extends StatelessWidget {
                                                   shiftId: shiftId,
                                                 )));
                                   },
-                                  child: const Text('Edit')),
+                                  child:
+                                      Text(AppLocalizations.of(context)!.edit)),
                               MenuItemButton(
                                   onPressed: () {
                                     showDialog(
                                         context: context,
                                         builder: (context) => AlertDialog(
-                                              title: const Text('Delete Shift'),
-                                              content: const Text(
-                                                  'Are you sure you want to delete this shift?'),
+                                              title: Text(
+                                                  AppLocalizations.of(context)!
+                                                      .deleteShift),
+                                              content: Text(
+                                                  AppLocalizations.of(context)!
+                                                      .sureDeleteShift),
                                               actions: [
                                                 TextButton(
                                                     onPressed: () =>
                                                         Navigator.of(context)
                                                             .pop(),
-                                                    child:
-                                                        const Text('Cancel')),
+                                                    child: Text(
+                                                        AppLocalizations.of(
+                                                                context)!
+                                                            .cancel)),
                                                 TextButton(
                                                     onPressed: () {
                                                       Provider.of<DataController>(
@@ -273,15 +281,18 @@ class ShiftCard extends StatelessWidget {
                                                       Navigator.of(context)
                                                           .pop();
                                                     },
-                                                    child: const Text(
-                                                      'Delete',
-                                                      style: TextStyle(
+                                                    child: Text(
+                                                      AppLocalizations.of(
+                                                              context)!
+                                                          .delete,
+                                                      style: const TextStyle(
                                                           color: Colors.red),
                                                     ))
                                               ],
                                             ));
                                   },
-                                  child: const Text('Delete'))
+                                  child: Text(
+                                      AppLocalizations.of(context)!.delete))
                             ]),
                       ],
                     ),
@@ -296,11 +307,11 @@ class ShiftCard extends StatelessWidget {
                         ),
                         ShiftDetail(
                             icon: const Icon(Icons.group),
-                            label: 'Members',
+                            label: AppLocalizations.of(context)!.members,
                             detail: memberNames),
                         ShiftDetail(
                             icon: const Icon(Icons.grid_view),
-                            label: 'Works',
+                            label: AppLocalizations.of(context)!.works,
                             detail: workNames),
                         Expanded(
                           child: Container(),
@@ -310,7 +321,7 @@ class ShiftCard extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   Text(
-                                    'Created',
+                                    AppLocalizations.of(context)!.generated,
                                     style:
                                         Theme.of(context).textTheme.labelSmall,
                                   )

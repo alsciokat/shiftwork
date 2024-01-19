@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import '../core.dart';
 import '../data.dart';
 import '../comp.dart';
@@ -51,18 +53,20 @@ class _EditPageState extends State<EditPage> {
                 } catch (error) {
                   if (error is ShiftWorkError) {
                     informUser(context,
-                        title: 'Error', content: error.description);
+                        title: AppLocalizations.of(context)!.error,
+                        content: error.description);
                   } else {
                     informUser(context,
-                        title: 'Error',
-                        content: "I'm sorry. Something went wrong.\n$error");
+                        title: AppLocalizations.of(context)!.error,
+                        content:
+                            "${AppLocalizations.of(context)!.sorryError}\n$error");
                   }
                   return;
                 }
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => ShowPage(widget.shiftId)));
               },
-              child: const Text('Create'))
+              child: Text(AppLocalizations.of(context)!.generate))
         ],
       ),
       body: <Widget>[
@@ -114,7 +118,8 @@ class _EditPageState extends State<EditPage> {
             children.add(NewListItem(
                 onTap: () {
                   if (dataController.data.groupData.objectOrder.isEmpty) {
-                    informUser(context, title: 'No Group Exists');
+                    informUser(context,
+                        title: AppLocalizations.of(context)!.noGroupExists);
                     return;
                   }
                   Future<Set<dynamic>?> newGroupIds = showDialog<Set<dynamic>>(
@@ -145,7 +150,7 @@ class _EditPageState extends State<EditPage> {
                     dataController.saveTempShift().notify();
                   });
                 },
-                label: 'Select Group'));
+                label: AppLocalizations.of(context)!.selectGroup));
           }
           if ((groupLength > 0 || otherGroup) &&
               (memberLength > 0 || otherGroup)) {
@@ -188,7 +193,8 @@ class _EditPageState extends State<EditPage> {
             children.add(NewListItem(
                 onTap: () {
                   if (dataController.data.memberData.objectOrder.isEmpty) {
-                    informUser(context, title: 'No Member Exists');
+                    informUser(context,
+                        title: AppLocalizations.of(context)!.noMemberExists);
                     return;
                   }
                   Future<Set<dynamic>?> newMemberIds = showDialog<Set<dynamic>>(
@@ -219,7 +225,7 @@ class _EditPageState extends State<EditPage> {
                     dataController.saveTempShift().notify();
                   });
                 },
-                label: 'Select Member'));
+                label: AppLocalizations.of(context)!.selectMember));
           }
           children.add(const Padding(padding: EdgeInsets.only(bottom: 100)));
           return ListView(
@@ -267,7 +273,8 @@ class _EditPageState extends State<EditPage> {
                 ? NewListItem(
                     onTap: () {
                       if (dataController.data.workData.objectOrder.isEmpty) {
-                        informUser(context, title: 'No Work Exists');
+                        informUser(context,
+                            title: AppLocalizations.of(context)!.noWorkExists);
                         return;
                       }
                       Future<Set<dynamic>?> newWorkIds =
@@ -298,7 +305,7 @@ class _EditPageState extends State<EditPage> {
                         dataController.saveTempShift().notify();
                       });
                     },
-                    label: 'Select Work')
+                    label: AppLocalizations.of(context)!.selectWork)
                 : const SizedBox(),
             const Padding(padding: EdgeInsets.only(bottom: 100))
           ]);
@@ -309,7 +316,9 @@ class _EditPageState extends State<EditPage> {
             padding: const EdgeInsets.symmetric(horizontal: 30),
             child: Column(children: [
               LeniencyFormField(
-                  label: 'Fixed Member Leniency Default',
+                  context: context,
+                  label:
+                      AppLocalizations.of(context)!.fixedMemberLeniencyDefault,
                   initialValue: shift.fixedMemberLeniency,
                   onChanged: (value) {
                     if (value != null) {
@@ -317,7 +326,9 @@ class _EditPageState extends State<EditPage> {
                     }
                   }),
               LeniencyFormField(
-                  label: 'Fixed Group Leniency Default',
+                  context: context,
+                  label:
+                      AppLocalizations.of(context)!.fixedGroupLeniencyDefault,
                   initialValue: shift.fixedGroupLeniency,
                   onChanged: (value) {
                     if (value != null) {
@@ -325,7 +336,9 @@ class _EditPageState extends State<EditPage> {
                     }
                   }),
               LeniencyFormField(
-                  label: 'Maximum Available Leniency Default',
+                  context: context,
+                  label: AppLocalizations.of(context)!
+                      .maximumAvailableLeniencyDefault,
                   initialValue: shift.maximumAvailableLeniency,
                   onChanged: (value) {
                     if (value != null) {
@@ -334,7 +347,7 @@ class _EditPageState extends State<EditPage> {
                   }),
               SwitchFormField(
                 initialBool: shift.shuffleMembers,
-                label: 'Shuffle Members',
+                label: AppLocalizations.of(context)!.shuffleMembers,
                 onChanged: (value) {
                   shift.shuffleMembers = value;
                 },
@@ -382,19 +395,19 @@ class _EditPageState extends State<EditPage> {
               color: Theme.of(context).colorScheme.onPrimary,
             ),
             icon: const Icon(Icons.group_outlined),
-            label: 'Members',
+            label: AppLocalizations.of(context)!.members,
           ),
           NavigationDestination(
             selectedIcon: Icon(Icons.grid_view,
                 color: Theme.of(context).colorScheme.onPrimary),
             icon: const Icon(Icons.grid_view_outlined),
-            label: 'Works',
+            label: AppLocalizations.of(context)!.works,
           ),
           NavigationDestination(
             selectedIcon: Icon(Icons.tune,
                 color: Theme.of(context).colorScheme.onPrimary),
             icon: const Icon(Icons.tune_outlined),
-            label: 'Options',
+            label: AppLocalizations.of(context)!.options,
           ),
         ],
       ),

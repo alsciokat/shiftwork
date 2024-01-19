@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import '../core.dart';
 import '../data.dart';
 import '../comp.dart';
-
-DateFormat dateTimeFormat = DateFormat('EEE, MMM d, h:mm a');
 
 class WorkCard extends StatelessWidget {
   final String name;
@@ -25,6 +25,8 @@ class WorkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    DateFormat dateTimeFormat =
+        DateFormat.MMMEd(Localizations.localeOf(context).languageCode).add_jm();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Card(
@@ -72,6 +74,7 @@ class ShowPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppLocalizations l10n = AppLocalizations.of(context)!;
     DataController dataController =
         Provider.of<DataController>(context, listen: false);
     Shift shift = dataController.getShift(shiftId);
@@ -98,7 +101,7 @@ class ShowPage extends StatelessWidget {
                     return;
                   }
                   String csvData =
-                      'Name\tDescription\tStart At\tEnd At\tMembers\n';
+                      '${l10n.name}\t${l10n.description}\t${l10n.startAt}\t${l10n.endAt}\t${l10n.members}\n';
                   for (Work work in works) {
                     csvData +=
                         '${work.name}\t${work.description}\t${work.dateTimeInterval.start.toString()}\t${work.dateTimeInterval.end.toString()}';
@@ -117,21 +120,23 @@ class ShowPage extends StatelessWidget {
                                 '/storage/emulated/0/Documents';
                         if (exportDirectory.startsWith('/storage/emulated/0')) {
                           exportDirectory = exportDirectory.replaceFirst(
-                              '/storage/emulated/0', 'Internal Storage');
+                              '/storage/emulated/0',
+                              AppLocalizations.of(context)!.internalStorage);
                         }
                         informUser(context,
-                            title: 'Saved',
+                            title: AppLocalizations.of(context)!.saved,
                             content:
-                                'Saved to: $exportDirectory/${shift.title}.tsv');
+                                '${AppLocalizations.of(context)!.exportedTo}: $exportDirectory/${shift.title}.tsv');
                       });
                     } else {
                       informUser(context,
-                          title: 'Export Failed',
-                          content: 'Please contact developer for it.');
+                          title: AppLocalizations.of(context)!.exportFailed,
+                          content:
+                              AppLocalizations.of(context)!.contactDeveloper);
                     }
                   });
                 },
-                child: const Text('Export'))
+                child: Text(AppLocalizations.of(context)!.export))
           ],
         ),
         body: ListView.builder(

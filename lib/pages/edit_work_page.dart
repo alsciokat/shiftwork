@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import '../core.dart';
 import '../data.dart';
 import '../comp.dart';
@@ -33,7 +35,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
         return Scaffold(
           appBar: AppBar(actions: [
             TextButton(
-              child: const Text('Save'),
+              child: Text(AppLocalizations.of(context)!.save),
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   formKey.currentState!.save();
@@ -57,7 +59,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                 children: [
                   StringFormField(
                     initialText: work.name,
-                    hintText: 'Name',
+                    hintText: AppLocalizations.of(context)!.name,
                     onSaved: (value) {
                       if (value == null) {
                         return;
@@ -67,7 +69,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                   ),
                   StringFormField(
                     initialText: work.description,
-                    hintText: 'Description',
+                    hintText: AppLocalizations.of(context)!.description,
                     onSaved: (value) {
                       if (value == null) {
                         return;
@@ -86,7 +88,8 @@ class _EditWorkPageState extends State<EditWorkPage> {
                   DateTimeFormField(
                       key: startDateTimeFormFieldKey,
                       initialDateTime: work.startDateTime,
-                      label: 'Start At',
+                      label: AppLocalizations.of(context)!.startAt,
+                      locale: Localizations.localeOf(context),
                       onChanged: (beforeDateTime, afterDateTime) {
                         if (endDateTimeFormFieldKey.currentState == null) {
                           return;
@@ -111,7 +114,8 @@ class _EditWorkPageState extends State<EditWorkPage> {
                   DateTimeFormField(
                     key: endDateTimeFormFieldKey,
                     initialDateTime: work.endDateTime,
-                    label: 'End At',
+                    label: AppLocalizations.of(context)!.endAt,
+                    locale: Localizations.localeOf(context),
                     onChanged: (beforeDateTime, afterDateTime) {
                       if (startDateTimeFormFieldKey.currentState == null) {
                         return;
@@ -150,7 +154,7 @@ class _EditWorkPageState extends State<EditWorkPage> {
                         .getShift(widget.shiftId)
                         .memberIds
                         .length,
-                    label: 'Required Members',
+                    label: AppLocalizations.of(context)!.requiredMembers,
                     onSaved: (newValue) {
                       if (newValue == null) {
                         return;
@@ -163,14 +167,14 @@ class _EditWorkPageState extends State<EditWorkPage> {
                     initialNum: work.load,
                     min: 0,
                     max: 10000,
-                    label: 'Relative Difficulty',
+                    label: AppLocalizations.of(context)!.relativeDifficulty,
                     onSaved: (value) {
                       work.load = value.toDouble();
                     },
                   ),
                   SwitchFormField(
                     initialBool: work.allowOverlap,
-                    label: 'Allow Overlap',
+                    label: AppLocalizations.of(context)!.allowOverlap,
                     onSaved: (newValue) {
                       if (newValue != null) {
                         work.allowOverlap = newValue;
@@ -188,6 +192,8 @@ class _EditWorkPageState extends State<EditWorkPage> {
                 children: [
                   DaySelectionFormField(
                     initialValue: work.repeatOn,
+                    label: AppLocalizations.of(context)!.repeatOn,
+                    locale: Localizations.localeOf(context),
                     onSaved: (newValue) {
                       if (newValue != null) {
                         work.repeatOn = newValue;
@@ -196,7 +202,8 @@ class _EditWorkPageState extends State<EditWorkPage> {
                   ),
                   DateTimeFormField(
                     initialDateTime: work.endRepeatOn,
-                    label: 'Repeat Until',
+                    label: AppLocalizations.of(context)!.repeatUntil,
+                    locale: Localizations.localeOf(context),
                     onSaved: (newValue) {
                       if (newValue != null) {
                         work.endRepeatOn = newValue;
@@ -227,7 +234,9 @@ class _EditWorkPageState extends State<EditWorkPage> {
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Fixed Members',
+                                    Text(
+                                        AppLocalizations.of(context)!
+                                            .fixedMembers,
                                         style: Theme.of(state.context)
                                             .textTheme
                                             .labelLarge),
@@ -260,20 +269,26 @@ class _EditWorkPageState extends State<EditWorkPage> {
                                       child: Padding(
                                         padding: const EdgeInsets.only(top: 8),
                                         child: Text(
-                                            state.value?.isNotEmpty == true
-                                                ? state.value!
-                                                    .map((memberId) =>
-                                                        dataController
-                                                            .getMember(memberId)
-                                                            .name)
-                                                    .join(', ')
-                                                : 'No fixed member'),
+                                          state.value?.isNotEmpty == true
+                                              ? state.value!
+                                                  .map((memberId) =>
+                                                      dataController
+                                                          .getMember(memberId)
+                                                          .name)
+                                                  .join(', ')
+                                              : AppLocalizations.of(context)!
+                                                  .noFixedMembers,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge,
+                                        ),
                                       ),
                                     )
                                   ]));
                         }),
                     LeniencyFormField(
-                      label: 'Fixed Member Leniency',
+                      label: AppLocalizations.of(context)!.fixedMemberLeniency,
+                      context: context,
                       initialValue: work.fixedMemberLeniency,
                       allowInherit: true,
                       onSaved: (newValue) {
@@ -298,7 +313,9 @@ class _EditWorkPageState extends State<EditWorkPage> {
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Fixed Groups',
+                                    Text(
+                                        AppLocalizations.of(context)!
+                                            .fixedGroups,
                                         style: Theme.of(state.context)
                                             .textTheme
                                             .labelLarge),
@@ -329,20 +346,27 @@ class _EditWorkPageState extends State<EditWorkPage> {
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.only(top: 8),
-                                        child: Text(state.value?.isNotEmpty ==
-                                                true
-                                            ? state.value!
-                                                .map((groupId) => dataController
-                                                    .getGroup(groupId)
-                                                    .name)
-                                                .join(', ')
-                                            : 'No fixed group'),
+                                        child: Text(
+                                          state.value?.isNotEmpty == true
+                                              ? state.value!
+                                                  .map((groupId) =>
+                                                      dataController
+                                                          .getGroup(groupId)
+                                                          .name)
+                                                  .join(', ')
+                                              : AppLocalizations.of(context)!
+                                                  .noFixedGroups,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge,
+                                        ),
                                       ),
                                     )
                                   ]));
                         }),
                     LeniencyFormField(
-                      label: 'Fixed Group Leniency',
+                      label: AppLocalizations.of(context)!.fixedGroupLeniency,
+                      context: context,
                       initialValue: work.fixedGroupLeniency,
                       allowInherit: true,
                       onSaved: (newValue) {

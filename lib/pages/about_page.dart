@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
@@ -37,14 +39,14 @@ class AboutPage extends StatelessWidget {
                 'ShiftWork',
                 style: Theme.of(context).textTheme.displayLarge,
               ),
-              const Text('Version 1.0.0'),
+              Text('${AppLocalizations.of(context)!.version} 1.0.0'),
             ]),
           ),
           const Padding(padding: EdgeInsets.only(top: 30)),
           Expanded(
               child: Column(
             children: [
-              const Text('Developed by Jeemin Kim. ©2024.'),
+              Text(AppLocalizations.of(context)!.developedBy),
               const Padding(padding: EdgeInsets.only(bottom: 12)),
               GestureDetector(
                 onTap: () {
@@ -52,8 +54,9 @@ class AboutPage extends StatelessWidget {
                           const ClipboardData(text: 'alsciokat@gmail.com'))
                       .then(
                     (_) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Email address copied to clipboard')));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(AppLocalizations.of(context)!
+                              .copiedToClipboard)));
                     },
                   );
                 },

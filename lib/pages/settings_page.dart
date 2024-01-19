@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 class SettingsPage extends StatefulWidget {
   final String exportDirectoryDefault = '/storage/emulated/0/Documents';
   const SettingsPage({super.key});
@@ -30,9 +32,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    String exportTo = AppLocalizations.of(context)!.exportTo;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(AppLocalizations.of(context)!.settings),
       ),
       body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -43,7 +46,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Export To',
+                      exportTo,
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                     GestureDetector(
@@ -57,7 +60,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           return;
                         }
                         FilePicker.platform
-                            .getDirectoryPath(dialogTitle: 'Export To')
+                            .getDirectoryPath(dialogTitle: exportTo)
                             .then((value) {
                           if (value == null) {
                             return;

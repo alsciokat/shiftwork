@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import 'core.dart';
 import 'data.dart';
 
@@ -92,10 +94,12 @@ class StringFormField extends StatelessWidget {
 
 class LeniencyFormField extends FormField<Leniency> {
   final String label;
+  final BuildContext context;
   final void Function(Leniency? value)? onChanged;
   LeniencyFormField(
       {super.key,
       required this.label,
+      required this.context,
       required super.initialValue,
       bool? allowInherit,
       this.onChanged,
@@ -128,9 +132,9 @@ class LeniencyFormField extends FormField<Leniency> {
                                   }
                                 : null,
                           ),
-                          const Padding(
-                            padding: EdgeInsets.only(left: 8.0),
-                            child: Text('Inherit'),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Text(AppLocalizations.of(context)!.inherit),
                           )
                         ]),
                         Row(
@@ -145,7 +149,7 @@ class LeniencyFormField extends FormField<Leniency> {
                                 }
                               },
                             ),
-                            const Text('Lenient'),
+                            Text(AppLocalizations.of(context)!.lenient),
                           ],
                         ),
                         Row(
@@ -160,7 +164,7 @@ class LeniencyFormField extends FormField<Leniency> {
                                 }
                               },
                             ),
-                            const Text('Strict'),
+                            Text(AppLocalizations.of(context)!.strict),
                           ],
                         ),
                       ]),
@@ -194,26 +198,15 @@ class LeniencyFormField extends FormField<Leniency> {
 //   }
 // }
 
-List<String> dayString = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-String convertRepeatOnToString(List<bool>? repeatOn) {
-  if (repeatOn == null) {
-    return 'Does Not Repeat';
-  }
-  String returnString = '';
-  for (int i = 0; i < 7; i++) {
-    if (repeatOn[i]) {
-      returnString += '${dayString[i]}, ';
-    }
-  }
-  if (returnString.isEmpty) {
-    return 'Does Not Repeat';
-  }
-  return returnString;
-}
-
 class DaySelectionFormField extends FormField<List<bool>> {
-  DaySelectionFormField({super.key, super.initialValue, super.onSaved})
+  final Locale locale;
+  final String label;
+  DaySelectionFormField(
+      {super.key,
+      super.initialValue,
+      required this.label,
+      required this.locale,
+      super.onSaved})
       : super(builder: (FormFieldState<List<bool>> state) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -221,7 +214,7 @@ class DaySelectionFormField extends FormField<List<bool>> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Repeat On',
+                  label,
                   style: Theme.of(state.context).textTheme.labelLarge,
                 ),
                 Padding(
@@ -231,7 +224,9 @@ class DaySelectionFormField extends FormField<List<bool>> {
                     children: List<Widget>.generate(
                         7,
                         (index) => FilterChip(
-                              label: Text(dayString[index].substring(0, 1)),
+                              label: Text(DateFormat.E(locale.languageCode)
+                                  .format(DateTime(2024, 1, index + 1))
+                                  .substring(0, 1)),
                               labelPadding: const EdgeInsets.all(3),
                               visualDensity: const VisualDensity(
                                   horizontal: -4, vertical: -4),
@@ -253,9 +248,6 @@ class DaySelectionFormField extends FormField<List<bool>> {
           );
         });
 }
-
-DateFormat dateFormat = DateFormat("EEE, MMM d, yyyy");
-DateFormat timeFormat = DateFormat('h:mm a');
 
 Duration? changeStartDateTimeFormFieldState(
     FormFieldState<DateTime?> startDateTimeFormFieldState,
@@ -292,6 +284,7 @@ Duration? changeEndDateTimeFormFieldState(
 class DateTimeFormField extends FormField<DateTime> {
   final DateTime initialDateTime;
   final String? label;
+  final Locale locale;
   final void Function(DateTime beforeDateTime, DateTime afterDateTime)?
       onChanged;
 
@@ -299,12 +292,15 @@ class DateTimeFormField extends FormField<DateTime> {
     super.key,
     required this.initialDateTime,
     this.label,
+    required this.locale,
     this.onChanged,
     super.onSaved,
   }) : super(
           initialValue: initialDateTime.copyWith(
               second: 0, millisecond: 0, microsecond: 0),
           builder: (FormFieldState<DateTime> state) {
+            DateFormat dateFormat = DateFormat.yMMMMEEEEd(locale.languageCode);
+            DateFormat timeFormat = DateFormat.jm(locale.languageCode);
             List<Widget> children = [];
             if (label != null) {
               children.add(Text(
@@ -656,12 +652,6 @@ class SwitchFormField extends FormField<bool> {
             });
 }
 
-DateFormat vacancyFormat = DateFormat("EE, MM/d");
-
-String getSubtitle(Vacancy vacancy) {
-  return '${vacancyFormat.format(vacancy.startDateTime)} - ${vacancyFormat.format(vacancy.endDateTime)}';
-}
-
 class NewListItem extends StatelessWidget {
   final String label;
   final void Function() onTap;
@@ -709,7 +699,7 @@ class ListItem extends StatelessWidget {
           onPressed: () {
             removeEntity(parentId, entityId).notify().flush();
           },
-          child: const Text('Remove'))
+          child: Text(AppLocalizations.of(context)!.remove))
     ];
     if (deletable) {
       menuItem.add(MenuItemButton(
@@ -721,7 +711,7 @@ class ListItem extends StatelessWidget {
             }
             deleteEntity!(entityId).notify().flush();
           },
-          child: const Text('Delete')));
+          child: Text(AppLocalizations.of(context)!.delete)));
     }
 
     Text? description;
@@ -776,7 +766,7 @@ void informUser(BuildContext context, {String? title, String? content}) {
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: const Text('Close'))
+                  child: Text(AppLocalizations.of(context)!.close))
             ],
           )));
 }
@@ -806,7 +796,7 @@ class _SelectDialogState extends State<SelectDialog> {
     // double contentHeight =
     //     (59.0 * widget.ids.length < 500) ? 59.0 * widget.ids.length : 500.0;
     return AlertDialog(
-      title: const Text('Select'),
+      title: Text(AppLocalizations.of(context)!.select),
       contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -843,7 +833,8 @@ class _SelectDialogState extends State<SelectDialog> {
                           },
                           title: Text(widget.titles.elementAt(index)),
                           subtitle: widget.subtitles
-                              .map((e) => (e == null) ? null : Text(e))
+                              .map((e) =>
+                                  (e == null || e == '') ? null : Text(e))
                               .elementAt(index)));
                 }),
           ),
@@ -855,12 +846,12 @@ class _SelectDialogState extends State<SelectDialog> {
             onPressed: () {
               Navigator.of(context).pop(null);
             },
-            child: const Text('Cancel')),
+            child: Text(AppLocalizations.of(context)!.cancel)),
         TextButton(
             onPressed: () {
               Navigator.of(context).pop(selectedIds);
             },
-            child: const Text('Confirm'))
+            child: Text(AppLocalizations.of(context)!.confirm))
       ],
     );
   }

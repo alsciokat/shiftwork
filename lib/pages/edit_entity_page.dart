@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../core.dart';
 import '../data.dart';
@@ -46,7 +49,7 @@ class _EditEntityPageState extends State<EditEntityPage> {
     return Scaffold(
         appBar: AppBar(actions: [
           TextButton(
-            child: const Text('Save'),
+            child: Text(AppLocalizations.of(context)!.save),
             onPressed: () {
               Shift shift = dataController.getShift(widget.shiftId);
               if (pageNumber == 0) {
@@ -68,20 +71,21 @@ class _EditEntityPageState extends State<EditEntityPage> {
               Future<bool?> quit = showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
-                        title: const Text('Saved'),
-                        content: Text(
-                            'Quit or Keep editing with new ${pageNumber == 0 ? 'member' : 'group'}?'),
+                        title: Text(AppLocalizations.of(context)!.saved),
+                        content: Text(AppLocalizations.of(context)!
+                            .quitOrKeep(pageNumber == 0 ? 'member' : 'group')),
                         actions: [
                           TextButton(
                               onPressed: () {
                                 Navigator.of(context).pop(false);
                               },
-                              child: const Text('Keep Editing')),
+                              child: Text(
+                                  AppLocalizations.of(context)!.keepEditing)),
                           TextButton(
                               onPressed: () {
                                 Navigator.of(context).pop(true);
                               },
-                              child: const Text('Quit'))
+                              child: Text(AppLocalizations.of(context)!.quit))
                         ],
                       ));
               quit.then(
@@ -192,9 +196,13 @@ class EntityHeader extends StatelessWidget {
               child: Transform.scale(
                 scale: .7,
                 child: SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment<int>(value: 0, label: Text('Member')),
-                    ButtonSegment<int>(value: 1, label: Text('Group')),
+                  segments: [
+                    ButtonSegment<int>(
+                        value: 0,
+                        label: Text(AppLocalizations.of(context)!.member)),
+                    ButtonSegment<int>(
+                        value: 1,
+                        label: Text(AppLocalizations.of(context)!.group)),
                   ],
                   selected: {selected},
                   onSelectionChanged: (Set<int> selected) {
@@ -237,7 +245,7 @@ class EditMemberPart extends StatelessWidget {
               child: Column(
                 children: [
                   StringFormField(
-                    hintText: 'Name',
+                    hintText: AppLocalizations.of(context)!.name,
                     initialText: member.name,
                     onChanged: (text) {
                       member.name = text;
@@ -251,7 +259,7 @@ class EditMemberPart extends StatelessWidget {
                   ),
                   StringFormField(
                     initialText: member.description,
-                    hintText: 'Description',
+                    hintText: AppLocalizations.of(context)!.description,
                     onChanged: (text) {
                       member.description = text;
                     },
@@ -274,7 +282,7 @@ class EditMemberPart extends StatelessWidget {
                 initialNum: member.preload,
                 min: -10000,
                 max: 10000,
-                label: 'Works Done Before',
+                label: AppLocalizations.of(context)!.initialLoad,
                 onSaved: (value) {
                   member.preload = value.toDouble();
                 },
@@ -291,7 +299,7 @@ class EditMemberPart extends StatelessWidget {
                     List<String> vacancyIds = member.vacancyIds;
                     if (index >= vacancyIds.length) {
                       return NewListItem(
-                        label: 'Add New Vacation',
+                        label: AppLocalizations.of(context)!.addVacation,
                         onTap: () {
                           Iterable<Vacancy> otherVacancies =
                               dataController.getAllOtherVacancies(memberId);
@@ -322,9 +330,10 @@ class EditMemberPart extends StatelessWidget {
                                   onPressed: () {
                                     Navigator.of(context).pop(defaultId);
                                   },
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text('New Vacation'),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(AppLocalizations.of(context)!
+                                        .newVacation),
                                   ),
                                 ));
                                 children.addAll(otherVacancies.map(
@@ -379,7 +388,11 @@ class EditMemberPart extends StatelessWidget {
                     if (vacancy.description != '') {
                       description += '${vacancy.description}, ';
                     }
-                    description += getSubtitle(vacancy);
+
+                    DateFormat vacancyFormat = DateFormat.MMMEd(
+                        Localizations.localeOf(context).languageCode);
+                    description +=
+                        '${vacancyFormat.format(vacancy.startDateTime)} - ${vacancyFormat.format(vacancy.endDateTime)}';
                     return ListItem(
                       entityId: vacancy.id,
                       entityName: vacancy.name,
@@ -440,7 +453,7 @@ class EditGroupPart extends StatelessWidget {
                   children: [
                     StringFormField(
                       initialText: group.name,
-                      hintText: 'Name',
+                      hintText: AppLocalizations.of(context)!.name,
                       onChanged: (text) {
                         group.name = text;
                       },
@@ -453,7 +466,7 @@ class EditGroupPart extends StatelessWidget {
                     ),
                     StringFormField(
                       initialText: group.description,
-                      hintText: 'Description',
+                      hintText: AppLocalizations.of(context)!.description,
                       onChanged: (text) {
                         group.description = text;
                       },
@@ -477,7 +490,8 @@ class EditGroupPart extends StatelessWidget {
                       context: context,
                       initialInt: group.maximumAvailable,
                       max: group.memberIds.length,
-                      label: "Maximum Available at Once",
+                      label: AppLocalizations.of(context)!
+                          .maximumAvailableQuantity,
                       onSaved: (newValue) {
                         if (newValue == null) {
                           return;
@@ -486,7 +500,9 @@ class EditGroupPart extends StatelessWidget {
                       },
                     ),
                     LeniencyFormField(
-                      label: 'Maximum Available Leniency',
+                      label: AppLocalizations.of(context)!
+                          .maximumAvailableQuantityLeniency,
+                      context: context,
                       initialValue: group.maximumAvailableLeniency,
                       allowInherit: true,
                       onSaved: (newValue) {
@@ -510,7 +526,7 @@ class EditGroupPart extends StatelessWidget {
                       List<String> memberIds = group.memberIds;
                       if (index >= memberIds.length) {
                         return NewListItem(
-                          label: 'Add a Member',
+                          label: AppLocalizations.of(context)!.addMember,
                           onTap: () {
                             Iterable<Member> otherMembers =
                                 dataController.getAllOtherMembers(groupId);
@@ -519,15 +535,20 @@ class EditGroupPart extends StatelessWidget {
                                   context: context,
                                   builder: (BuildContext context) =>
                                       AlertDialog(
-                                        title: const Text('Attention'),
-                                        content: const Text(
-                                            'There is no member to add.\nPlease create one first.'),
+                                        title: Text(
+                                            AppLocalizations.of(context)!
+                                                .attention),
+                                        content: Text(
+                                            AppLocalizations.of(context)!
+                                                .noMemberToAdd),
                                         actions: [
                                           TextButton(
                                               onPressed: () {
                                                 Navigator.of(context).pop(true);
                                               },
-                                              child: const Text('Close')),
+                                              child: Text(
+                                                  AppLocalizations.of(context)!
+                                                      .close)),
                                         ],
                                       ));
                             } else {
@@ -620,7 +641,7 @@ class EditVacancyDialog extends StatelessWidget {
                     formKey.currentState!.save();
                     Navigator.of(context).pop(true);
                   },
-                  child: const Text('Save'),
+                  child: Text(AppLocalizations.of(context)!.save),
                 ),
               ],
             ),
@@ -635,7 +656,7 @@ class EditVacancyDialog extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 16.0),
                         child: StringFormField(
                           initialText: vacancy.name,
-                          hintText: 'Title',
+                          hintText: AppLocalizations.of(context)!.title,
                           autofocus: true,
                           onSaved: (text) {
                             if (text == null) {
@@ -648,7 +669,8 @@ class EditVacancyDialog extends StatelessWidget {
                       DateTimeFormField(
                         key: startDateTimeFormFieldKey,
                         initialDateTime: vacancy.startDateTime,
-                        label: 'Start At',
+                        label: AppLocalizations.of(context)!.startAt,
+                        locale: Localizations.localeOf(context),
                         onChanged: (beforeDateTime, afterDateTime) {
                           if (endDateTimeFormFieldKey.currentState == null) {
                             return;
@@ -669,7 +691,8 @@ class EditVacancyDialog extends StatelessWidget {
                       DateTimeFormField(
                         key: endDateTimeFormFieldKey,
                         initialDateTime: vacancy.endDateTime,
-                        label: 'End At',
+                        label: AppLocalizations.of(context)!.endAt,
+                        locale: Localizations.localeOf(context),
                         onChanged: (beforeDateTime, afterDateTime) {
                           if (startDateTimeFormFieldKey.currentState == null) {
                             return;
@@ -689,7 +712,7 @@ class EditVacancyDialog extends StatelessWidget {
                       ),
                       SwitchFormField(
                         initialBool: vacancy.isPaid,
-                        label: 'Paid',
+                        label: AppLocalizations.of(context)!.paid,
                         onSaved: (value) {
                           if (value == null) {
                             return;
