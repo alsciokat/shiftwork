@@ -61,8 +61,7 @@ class DateTimeInterval {
     if (((other._start.isAfter(_start) ||
                 other._start.isAtSameMomentAs(_start)) &&
             other._start.isBefore(_end)) ||
-        (other._end.isAfter(_start) &&
-            (other._end.isBefore(_end) || other._end.isAtSameMomentAs(_end)))) {
+        (other._start.isBefore(_start) && other._end.isAfter(_start))) {
       return true;
     }
     return false;
@@ -469,7 +468,7 @@ class Group extends IObject {
       Leniency? maximumAvailableLeniency,
       String? description})
       : name = name ?? nameDefault,
-        memberIds = memberIds ?? memberIdsDefault,
+        memberIds = memberIds ?? List.from(memberIdsDefault),
         maximumAvailable = maximumAvailable ?? maximumAvailableDefault,
         maximumAvailableLeniency =
             maximumAvailableLeniency ?? maximumAvailableLeniencyDefault,

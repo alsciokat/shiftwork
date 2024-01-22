@@ -39,14 +39,21 @@ class _EditWorkPageState extends State<EditWorkPage> {
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   formKey.currentState!.save();
-                  dataController.saveTempWork();
+                  if (widget.workId ==
+                      dataController.data.workData.tempObject.id) {
+                    dataController.saveTempWork();
+                  }
                   if (!dataController
                       .getShift(widget.shiftId)
                       .workIds
                       .contains(widget.workId)) {
                     dataController.addWork(widget.shiftId, widget.workId);
                   }
-                  dataController.saveTempShift().notify().flush();
+                  if (widget.shiftId ==
+                      dataController.data.shiftData.tempObject.id) {
+                    dataController.saveTempShift();
+                  }
+                  dataController.notify().flush();
                   Navigator.of(context).pop(true);
                 }
               },

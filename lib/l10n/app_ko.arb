@@ -46,7 +46,7 @@
     "noFixedGroups": "고정 그룹 없음",
     "fixedGroupLeniency": "고정 그룹 융통성",
     "saved": "저장됨",
-    "quitOrKeep": "편집 종료 또는 새 {entity, select, member{멤버} group{그룹} other{멤버}}으로 계속",
+    "quitOrKeep": "편집 종료 또는 새 {entity, select, member{멤버} group{그룹으} other{멤버}}로 계속",
     "keepEditing": "계속",
     "quit": "종료",
     "member": "멤버",

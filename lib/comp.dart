@@ -501,7 +501,7 @@ void changeIntSliderFormFieldState(
   if (intSliderFormFieldState.value == null) {
     return;
   }
-  if (delta < 0 && intSliderFormFieldState.value! + delta >= 0) {
+  if (intSliderFormFieldState.value! + delta >= 0) {
     intSliderFormFieldState.didChange(intSliderFormFieldState.value! + delta);
   }
 }
@@ -539,17 +539,17 @@ class IntSliderFormField extends StatelessWidget {
     }
 
     int division = (max - min);
-    if (max - min == 0) {
-      division = 1;
-    }
     bool disabled = false;
-    double initialValue = initialInt.toDouble();
-    if (initialInt < min || max < initialInt) {
-      initialValue = min.toDouble();
+    if (max - min <= 0) {
+      division = 1;
       disabled = true;
     }
-    if (initialInt == -1) {
+
+    double initialValue = initialInt.toDouble();
+    if (initialInt == -1 || initialInt > max) {
       initialValue = max.toDouble();
+    } else if (initialInt < min) {
+      initialValue = min.toDouble();
     }
 
     return _IntSliderFormField(
@@ -695,6 +695,14 @@ class ListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     List<MenuItemButton> menuItem = [
+      MenuItemButton(
+          onPressed: () {
+            if (onTap == null) {
+              return;
+            }
+            onTap!(context);
+          },
+          child: Text(AppLocalizations.of(context)!.edit)),
       MenuItemButton(
           onPressed: () {
             removeEntity(parentId, entityId).notify().flush();

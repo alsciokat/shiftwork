@@ -68,16 +68,56 @@ class WorkCard extends StatelessWidget {
   }
 }
 
-class ShowPage extends StatelessWidget {
+class ShowPage extends StatefulWidget {
   final String shiftId;
-  const ShowPage(this.shiftId, {super.key});
+  final bool generate;
+  const ShowPage(this.shiftId, {super.key, this.generate = false});
+
+  @override
+  State<ShowPage> createState() => _ShowPageState();
+}
+
+class _ShowPageState extends State<ShowPage> {
+  late bool loading;
+
+  @override
+  void initState() {
+    loading = widget.generate;
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
-    AppLocalizations l10n = AppLocalizations.of(context)!;
     DataController dataController =
         Provider.of<DataController>(context, listen: false);
-    Shift shift = dataController.getShift(shiftId);
+    Shift shift = dataController.getShift(widget.shiftId);
+
+    if (loading) {
+      () async {
+        try {
+          dataController.generateShift(widget.shiftId);
+          shift.created = true;
+          dataController.flush();
+          return null;
+        } catch (error) {
+          return error;
+        }
+      }()
+          .then((error) {
+        if (error == null) {
+          setState(() {
+            loading = false;
+          });
+        } else {
+          Navigator.of(context).pop(error);
+        }
+      });
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    AppLocalizations l10n = AppLocalizations.of(context)!;
     List<Work> works = [];
     for (Work work in shift.workIds.map((id) => dataController.getWork(id))) {
       works.add(work);

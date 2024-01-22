@@ -11,12 +11,14 @@ import '../comp.dart';
 class EditEntityPage extends StatefulWidget {
   final String memberId, groupId, shiftId;
   final int initialPage;
+  final bool isEditing;
 
   const EditEntityPage(
       {required this.memberId,
       required this.groupId,
       required this.shiftId,
       this.initialPage = 0,
+      this.isEditing = false,
       super.key});
 
   @override
@@ -54,58 +56,70 @@ class _EditEntityPageState extends State<EditEntityPage> {
               Shift shift = dataController.getShift(widget.shiftId);
               if (pageNumber == 0) {
                 memberFormKey.currentState?.save();
-                dataController.saveTempMember();
+                if (memberId == dataController.data.memberData.tempObject.id) {
+                  dataController.saveTempMember();
+                }
                 if (!shift.memberIds.contains(memberId)) {
                   dataController.addMember(widget.shiftId, memberId);
                 }
               } else if (pageNumber == 1) {
                 groupFormKey.currentState?.save();
-                dataController.saveTempGroup();
+                if (groupId == dataController.data.groupData.tempObject.id) {
+                  dataController.saveTempGroup();
+                }
                 if (!shift.groupIds.contains(groupId)) {
                   dataController.addGrouop(widget.shiftId, groupId);
                 }
               } else {
                 return;
               }
-              dataController.saveTempShift().notify().flush();
-              Future<bool?> quit = showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                        title: Text(AppLocalizations.of(context)!.saved),
-                        content: Text(AppLocalizations.of(context)!
-                            .quitOrKeep(pageNumber == 0 ? 'member' : 'group')),
-                        actions: [
-                          TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(false);
-                              },
-                              child: Text(
-                                  AppLocalizations.of(context)!.keepEditing)),
-                          TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop(true);
-                              },
-                              child: Text(AppLocalizations.of(context)!.quit))
-                        ],
-                      ));
-              quit.then(
-                (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  if (value) {
-                    Navigator.of(context).pop();
-                  } else {
-                    setState(() {
-                      if (pageNumber == 0) {
-                        memberId = genId();
-                      } else if (pageNumber == 1) {
-                        groupId = genId();
-                      }
-                    });
-                  }
-                },
-              );
+              if (shift.id == dataController.data.shiftData.tempObject.id) {
+                dataController.saveTempShift();
+              }
+              dataController.notify().flush();
+              if (!widget.isEditing) {
+                Future<bool?> quit = showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                          title: Text(AppLocalizations.of(context)!.saved),
+                          content: Text(AppLocalizations.of(context)!
+                              .quitOrKeep(
+                                  pageNumber == 0 ? 'member' : 'group')),
+                          actions: [
+                            TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop(false);
+                                },
+                                child: Text(
+                                    AppLocalizations.of(context)!.keepEditing)),
+                            TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop(true);
+                                },
+                                child: Text(AppLocalizations.of(context)!.quit))
+                          ],
+                        ));
+                quit.then(
+                  (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    if (value) {
+                      Navigator.of(context).pop();
+                    } else {
+                      setState(() {
+                        if (pageNumber == 0) {
+                          memberId = genId();
+                        } else if (pageNumber == 1) {
+                          groupId = genId();
+                        }
+                      });
+                    }
+                  },
+                );
+              } else {
+                Navigator.of(context).pop();
+              }
             },
           ),
         ]),
@@ -125,12 +139,6 @@ class _EditEntityPageState extends State<EditEntityPage> {
               controller: controller,
               onPageChanged: (value) {
                 setState(() {
-                  if (memberId == defaultId) {
-                    memberId = genId();
-                  }
-                  if (groupId == defaultId) {
-                    groupId = genId();
-                  }
                   pageNumber = value;
                 });
               },
@@ -410,7 +418,7 @@ class EditMemberPart extends StatelessWidget {
                             return;
                           }
                           if (value) {
-                            dataController.saveTempVacancy().notify();
+                            dataController.notify();
                           }
                         });
                       },
@@ -570,12 +578,17 @@ class EditGroupPart extends StatelessWidget {
                                 if (ids == null) {
                                   return;
                                 }
-                                dataController
-                                    .getGroup(groupId)
-                                    .memberIds
-                                    .addAll(ids.map(
-                                      (e) => e as String,
-                                    ));
+                                if (sliderFormFieldKey.currentState != null &&
+                                    sliderFormFieldKey.currentState!.value!
+                                            .round() ==
+                                        group.memberIds.length) {
+                                  changeIntSliderFormFieldState(
+                                      sliderFormFieldKey.currentState!,
+                                      ids.length);
+                                }
+                                group.memberIds.addAll(ids.map(
+                                  (e) => e as String,
+                                ));
                                 dataController.notify();
                               });
                             }
@@ -595,7 +608,9 @@ class EditGroupPart extends StatelessWidget {
                           onMemberTap(member.id);
                         },
                         removeEntity: (groupId, memberId) {
-                          if (sliderFormFieldKey.currentState != null) {
+                          if (sliderFormFieldKey.currentState != null &&
+                              sliderFormFieldKey.currentState!.value!.round() ==
+                                  group.memberIds.length) {
                             changeIntSliderFormFieldState(
                                 sliderFormFieldKey.currentState!, -1);
                           }

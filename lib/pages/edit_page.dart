@@ -37,7 +37,11 @@ class _EditPageState extends State<EditPage> {
             style: Theme.of(context).textTheme.titleLarge,
             onSubmitted: (value) {
               dataController.getShift(widget.shiftId).title = value;
-              dataController.saveTempShift().notify().flush();
+              if (widget.shiftId ==
+                  dataController.data.shiftData.tempObject.id) {
+                dataController.saveTempShift();
+              }
+              dataController.notify().flush();
             },
           ),
         ),
@@ -46,25 +50,33 @@ class _EditPageState extends State<EditPage> {
               onPressed: () {
                 DataController dataController =
                     Provider.of<DataController>(context, listen: false);
-                try {
-                  dataController.saveTempShift().generateShift(widget.shiftId);
-                  dataController.getShift(widget.shiftId).created = true;
-                  dataController.flush();
-                } catch (error) {
-                  if (error is ShiftWorkError) {
-                    informUser(context,
-                        title: AppLocalizations.of(context)!.error,
-                        content: error.description);
-                  } else {
-                    informUser(context,
-                        title: AppLocalizations.of(context)!.error,
-                        content:
-                            "${AppLocalizations.of(context)!.sorryError}\n$error");
-                  }
-                  return;
+                if (widget.shiftId ==
+                    dataController.data.shiftData.tempObject.id) {
+                  dataController.saveTempShift();
                 }
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => ShowPage(widget.shiftId)));
+                Future<Object?> error =
+                    Navigator.of(context).push<Object?>(MaterialPageRoute(
+                        builder: (context) => ShowPage(
+                              widget.shiftId,
+                              generate: true,
+                            )));
+                error.then(
+                  (value) {
+                    if (value == null) {
+                      return;
+                    }
+                    if (value is ShiftWorkError) {
+                      informUser(context,
+                          title: AppLocalizations.of(context)!.error,
+                          content: value.description);
+                    } else {
+                      informUser(context,
+                          title: AppLocalizations.of(context)!.error,
+                          content:
+                              "${AppLocalizations.of(context)!.sorryError}\n$value");
+                    }
+                  },
+                );
               },
               child: Text(AppLocalizations.of(context)!.generate))
         ],
@@ -100,10 +112,11 @@ class _EditPageState extends State<EditPage> {
                   onTap: (context) {
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => EditEntityPage(
-                        memberId: defaultId,
+                        memberId: genId(),
                         groupId: group.id,
                         shiftId: widget.shiftId,
                         initialPage: 1,
+                        isEditing: true,
                       ),
                     ));
                   },
@@ -147,7 +160,11 @@ class _EditPageState extends State<EditPage> {
                         .getShift(widget.shiftId)
                         .groupIds
                         .addAll(ids.map((e) => e as String));
-                    dataController.saveTempShift().notify();
+                    if (widget.shiftId ==
+                        dataController.data.shiftData.tempObject.id) {
+                      dataController.saveTempShift();
+                    }
+                    dataController.notify();
                   });
                 },
                 label: AppLocalizations.of(context)!.selectGroup));
@@ -175,9 +192,10 @@ class _EditPageState extends State<EditPage> {
                       Navigator.of(context).push(MaterialPageRoute(
                         builder: (context) => EditEntityPage(
                           memberId: member.id,
-                          groupId: defaultId,
+                          groupId: genId(),
                           shiftId: widget.shiftId,
                           initialPage: 0,
+                          isEditing: true,
                         ),
                       ));
                     },
@@ -222,7 +240,11 @@ class _EditPageState extends State<EditPage> {
                         .getShift(widget.shiftId)
                         .memberIds
                         .addAll(ids.map((e) => e as String));
-                    dataController.saveTempShift().notify();
+                    if (widget.shiftId ==
+                        dataController.data.shiftData.tempObject.id) {
+                      dataController.saveTempShift();
+                    }
+                    dataController.notify();
                   });
                 },
                 label: AppLocalizations.of(context)!.selectMember));
@@ -302,7 +324,11 @@ class _EditPageState extends State<EditPage> {
                           return;
                         }
                         shift.workIds.addAll(ids.map((e) => e as String));
-                        dataController.saveTempShift().notify();
+                        if (widget.shiftId ==
+                            dataController.data.shiftData.tempObject.id) {
+                          dataController.saveTempShift();
+                        }
+                        dataController.notify();
                       });
                     },
                     label: AppLocalizations.of(context)!.selectWork)
