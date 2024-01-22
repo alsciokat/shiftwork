@@ -236,70 +236,32 @@ class _EditWorkPageState extends State<EditWorkPage> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FormField<List<String>>(
-                        onSaved: (newValue) {
-                          if (newValue == null) {
-                            return;
-                          }
-                          work.fixedMemberIds = newValue;
-                        },
-                        initialValue: work.fixedMemberIds,
-                        builder: (state) {
-                          return Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12.0),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(l10n.fixedMembers,
-                                        style: Theme.of(state.context)
-                                            .textTheme
-                                            .labelLarge),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Iterable<Member> members = shift
-                                            .memberIds
-                                            .map((memberId) => dataController
-                                                .getMember(memberId));
-                                        Future<Set<dynamic>?> selectedIds =
-                                            showDialog<Set<dynamic>>(
-                                                context: context,
-                                                builder: (context) =>
-                                                    SelectDialog(
-                                                        ids: shift.memberIds,
-                                                        titles: members
-                                                            .map((e) => e.name),
-                                                        subtitles: members.map(
-                                                            (e) => e
-                                                                .description)));
-                                        selectedIds.then((value) {
-                                          if (value == null) {
-                                            return;
-                                          }
-                                          state.didChange(value
-                                              .map((e) => e as String)
-                                              .toList());
-                                        });
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          state.value?.isNotEmpty == true
-                                              ? state.value!
-                                                  .map((memberId) =>
-                                                      dataController
-                                                          .getMember(memberId)
-                                                          .name)
-                                                  .join(', ')
-                                              : l10n.noFixedMembers,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyLarge,
-                                        ),
-                                      ),
-                                    )
-                                  ]));
-                        }),
+                    EntityFormField(
+                      initialValue: work.fixedMemberIds,
+                      label: l10n.fixedMembers,
+                      noEntityLabel: l10n.noFixedMembers,
+                      onTap: () {
+                        Iterable<Member> members = shift.memberIds.map(
+                            (memberId) => dataController.getMember(memberId));
+                        Future<Set<dynamic>?> selectedIds =
+                            showDialog<Set<dynamic>>(
+                                context: context,
+                                builder: (context) => SelectDialog(
+                                    ids: shift.memberIds,
+                                    titles: members.map((e) => e.name),
+                                    subtitles:
+                                        members.map((e) => e.description)));
+                        return selectedIds;
+                      },
+                      convert: (ids) =>
+                          ids.map((e) => dataController.getMember(e).name),
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        work.fixedMemberIds = newValue;
+                      },
+                    ),
                     LeniencyFormField(
                       label: l10n.fixedMemberLeniency,
                       context: context,
@@ -312,69 +274,32 @@ class _EditWorkPageState extends State<EditWorkPage> {
                         work.fixedMemberLeniency = newValue;
                       },
                     ),
-                    FormField<List<String>>(
-                        onSaved: (newValue) {
-                          if (newValue == null) {
-                            return;
-                          }
-                          work.fixedGroupIds = newValue;
-                        },
-                        initialValue: work.fixedGroupIds,
-                        builder: (state) {
-                          return Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12.0),
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(l10n.fixedGroups,
-                                        style: Theme.of(state.context)
-                                            .textTheme
-                                            .labelLarge),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Iterable<Group> groups = shift.groupIds
-                                            .map((groupId) => dataController
-                                                .getGroup(groupId));
-                                        Future<Set<dynamic>?> selectedIds =
-                                            showDialog<Set<dynamic>>(
-                                                context: context,
-                                                builder: (context) =>
-                                                    SelectDialog(
-                                                        ids: shift.groupIds,
-                                                        titles: groups
-                                                            .map((e) => e.name),
-                                                        subtitles: groups.map(
-                                                            (e) => e
-                                                                .description)));
-                                        selectedIds.then((value) {
-                                          if (value == null) {
-                                            return;
-                                          }
-                                          state.didChange(value
-                                              .map((e) => e as String)
-                                              .toList());
-                                        });
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(top: 8),
-                                        child: Text(
-                                          state.value?.isNotEmpty == true
-                                              ? state.value!
-                                                  .map((groupId) =>
-                                                      dataController
-                                                          .getGroup(groupId)
-                                                          .name)
-                                                  .join(', ')
-                                              : l10n.noFixedGroups,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyLarge,
-                                        ),
-                                      ),
-                                    )
-                                  ]));
-                        }),
+                    EntityFormField(
+                      initialValue: work.fixedGroupIds,
+                      label: l10n.fixedGroups,
+                      noEntityLabel: l10n.noFixedGroups,
+                      onTap: () {
+                        Iterable<Group> groups = shift.groupIds
+                            .map((groupId) => dataController.getGroup(groupId));
+                        Future<Set<dynamic>?> selectedIds =
+                            showDialog<Set<dynamic>>(
+                                context: context,
+                                builder: (context) => SelectDialog(
+                                    ids: shift.groupIds,
+                                    titles: groups.map((e) => e.name),
+                                    subtitles:
+                                        groups.map((e) => e.description)));
+                        return selectedIds;
+                      },
+                      convert: (ids) =>
+                          ids.map((e) => dataController.getGroup(e).name),
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        work.fixedGroupIds = newValue;
+                      },
+                    ),
                     LeniencyFormField(
                       label: l10n.fixedGroupLeniency,
                       context: context,
@@ -385,6 +310,90 @@ class _EditWorkPageState extends State<EditWorkPage> {
                           return;
                         }
                         work.fixedGroupLeniency = newValue;
+                      },
+                    ),
+                  ]),
+            ),
+            const ContentDivider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    EntityFormField(
+                      initialValue: work.excludedMemberIds,
+                      label: l10n.excludedMembers,
+                      noEntityLabel: l10n.noExcludedMembers,
+                      onTap: () {
+                        Iterable<Member> members = shift.memberIds.map(
+                            (memberId) => dataController.getMember(memberId));
+                        Future<Set<dynamic>?> selectedIds =
+                            showDialog<Set<dynamic>>(
+                                context: context,
+                                builder: (context) => SelectDialog(
+                                    ids: shift.memberIds,
+                                    titles: members.map((e) => e.name),
+                                    subtitles:
+                                        members.map((e) => e.description)));
+                        return selectedIds;
+                      },
+                      convert: (ids) =>
+                          ids.map((e) => dataController.getMember(e).name),
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        work.excludedMemberIds = newValue;
+                      },
+                    ),
+                    LeniencyFormField(
+                      label: l10n.excludedMemberLeniency,
+                      context: context,
+                      initialValue: work.excludedMemberLeniency,
+                      allowInherit: true,
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        work.excludedMemberLeniency = newValue;
+                      },
+                    ),
+                    EntityFormField(
+                      initialValue: work.excludedGroupIds,
+                      label: l10n.excludedGroups,
+                      noEntityLabel: l10n.noExcludedGroups,
+                      onTap: () {
+                        Iterable<Group> groups = shift.groupIds
+                            .map((groupId) => dataController.getGroup(groupId));
+                        Future<Set<dynamic>?> selectedIds =
+                            showDialog<Set<dynamic>>(
+                                context: context,
+                                builder: (context) => SelectDialog(
+                                    ids: shift.groupIds,
+                                    titles: groups.map((e) => e.name),
+                                    subtitles:
+                                        groups.map((e) => e.description)));
+                        return selectedIds;
+                      },
+                      convert: (ids) =>
+                          ids.map((e) => dataController.getGroup(e).name),
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        work.excludedGroupIds = newValue;
+                      },
+                    ),
+                    LeniencyFormField(
+                      label: l10n.excludedGroupLeniency,
+                      context: context,
+                      initialValue: work.excludedGroupLeniency,
+                      allowInherit: true,
+                      onSaved: (newValue) {
+                        if (newValue == null) {
+                          return;
+                        }
+                        work.excludedGroupLeniency = newValue;
                       },
                     ),
                   ]),

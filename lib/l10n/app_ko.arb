@@ -26,6 +26,8 @@
     "selectWork": "작업 선택",
     "fixedMemberLeniencyDefault": "고정 멤버 융통성 기본값",
     "fixedGroupLeniencyDefault": "고정 그룹 융통성 기본값",
+    "excludedMemberLeniencyDefault": "제외 멤버 융통성 기본값",
+    "excludedGroupLeniencyDefault": "제외 그룹 융통성 기본값",
     "maximumAvailableLeniencyDefault": "최대 가용량 융통성 기본값",
     "shuffleMembers": "멤버 순서 섞기",
     "options": "옵션",
@@ -81,5 +83,11 @@
     "pleaseAddWork": "작업이 존재하지 않습니다.\n먼저 작업을 추가해 주세요",
     "notEnoughMembersFor": "{workName}(을)를 위한 멤버가 부족합니다.",
     "repeated": "반복됨",
-    "repeatWithSameMembers": "같은 멤버로 반복"
+    "repeatWithSameMembers": "같은 멤버로 반복",
+    "excludedMembers": "제외 멤버",
+    "noExcludedMembers": "제외 멤버 없음",
+    "excludedMemberLeniency": "제외 멤버 융통성",
+    "excludedGroups": "제외 그룹",
+    "noExcludedGroups": "제외 그룹 없음",
+    "excludedGroupLeniency": "제외 그룹 융통성"
 }

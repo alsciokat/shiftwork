@@ -29,6 +29,8 @@
     "selectWork": "Select Work",
     "fixedMemberLeniencyDefault": "Default Fixed Member Leniency",
     "fixedGroupLeniencyDefault": "Default Fixed Group Leniency",
+    "excludedMemberLeniencyDefault": "Default Excluded Member Leniency",
+    "excludedGroupLeniencyDefault": "Default Excluded Group Leniency",
     "maximumAvailableLeniencyDefault": "Default Maximum Available Quantity Leniency",
     "shuffleMembers": "Shuffle Members",
     "options": "Options",
@@ -100,5 +102,11 @@
         }
     },
     "repeated": "Repeated",
-    "repeatWithSameMembers": "Repeat With Same Members"
+    "repeatWithSameMembers": "Repeat With Same Members",
+    "excludedMembers": "Excluded Members",
+    "noExcludedMembers": "No Excluded Members",
+    "excludedMemberLeniency": "Excluded Member Leniency",
+    "excludedGroups": "Excluded Groups",
+    "noExcludedGroups": "No Excluded Groups",
+    "excludedGroupLeniency": "Excluded Group Leniency"
 }

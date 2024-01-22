@@ -652,6 +652,52 @@ class SwitchFormField extends FormField<bool> {
             });
 }
 
+class EntityFormField extends FormField<List<String>> {
+  final String label;
+  final String noEntityLabel;
+  final Future<Set<dynamic>?> Function() onTap;
+  final Iterable<String> Function(Iterable<String> ids) convert;
+  EntityFormField(
+      {super.key,
+      super.initialValue,
+      required this.label,
+      required this.noEntityLabel,
+      required this.onTap,
+      required this.convert,
+      super.onSaved})
+      : super(builder: (FormFieldState<List<String>> state) {
+          return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: Theme.of(state.context).textTheme.labelLarge),
+                    GestureDetector(
+                      onTap: () {
+                        Future<Set<dynamic>?> selectedIds = onTap();
+                        selectedIds.then((value) {
+                          if (value == null) {
+                            return;
+                          }
+                          state.didChange(
+                              value.map((e) => e as String).toList());
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          state.value?.isNotEmpty == true
+                              ? convert(state.value!).join(', ')
+                              : noEntityLabel,
+                          style: Theme.of(state.context).textTheme.bodyLarge,
+                        ),
+                      ),
+                    )
+                  ]));
+        });
+}
+
 class NewListItem extends StatelessWidget {
   final String label;
   final void Function() onTap;

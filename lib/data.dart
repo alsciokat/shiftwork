@@ -263,7 +263,6 @@ class DataController extends ChangeNotifier {
       member.assignedIntervals.clear();
       member.previousLoad = 0;
       member.previousTotalLoad = 0;
-      member.previousLoadEndDateTime = DateTime(0);
     }
     return this;
   }
@@ -339,6 +338,8 @@ class DataController extends ChangeNotifier {
     // int efml = 1;
     Leniency gFixedGroupLeniency = shift.fixedGroupLeniency;
     // int efgl = 0;
+    Leniency gExcludedMemberLeniency = shift.excludedMemberLeniency;
+    Leniency gExcludedGroupLeniency = shift.excludedGroupLeniency;
     Leniency gMaximumAvailableLeniency = shift.maximumAvailableLeniency;
     List<Work> worksLeft = [];
 
@@ -372,6 +373,10 @@ class DataController extends ChangeNotifier {
                 fixedMemberLeniency: work.fixedMemberLeniency,
                 fixedGroupIds: work.fixedGroupIds,
                 fixedGroupLeniency: work.fixedGroupLeniency,
+                excludedMemberIds: work.excludedMemberIds,
+                excludedMemberLeniency: work.excludedMemberLeniency,
+                excludedGroupIds: work.excludedGroupIds,
+                excludedGroupLeniency: work.excludedGroupLeniency,
                 memberIds: [],
                 allowOverlap: work.allowOverlap,
                 repeatedWorks: List.empty(),
@@ -407,6 +412,12 @@ class DataController extends ChangeNotifier {
       if (nextWork.fixedGroupLeniency != Leniency.inherit) {
         gFixedGroupLeniency = nextWork.fixedGroupLeniency;
       }
+      if (nextWork.excludedMemberLeniency != Leniency.inherit) {
+        gExcludedMemberLeniency = nextWork.excludedMemberLeniency;
+      }
+      if (nextWork.excludedGroupLeniency != Leniency.inherit) {
+        gExcludedGroupLeniency = nextWork.excludedGroupLeniency;
+      }
 
       // Get the list of available members by iterating over all possible configurations.
       // for (int i = 0; i < 4; i++) {
@@ -438,6 +449,8 @@ class DataController extends ChangeNotifier {
             groups,
             gFixedMemberLeniency,
             gFixedGroupLeniency,
+            gExcludedMemberLeniency,
+            gExcludedGroupLeniency,
             gMaximumAvailableLeniency);
       }
       //   if (members.where((member) => member.availablity > notAvailable).length >=
@@ -487,7 +500,7 @@ class DataController extends ChangeNotifier {
 
         // Assign
         nextWork.memberIds.add(nextMember.id);
-        nextMember.addLoad(nextWork.getLoad(), at: nextWork.endDateTime);
+        nextMember.addLoad(nextWork.getLoad());
         if (!nextWork.allowOverlap) {
           nextMember.assignedIntervals.addAll(nextWork.getIntervals());
         }
@@ -633,6 +646,8 @@ class DataController extends ChangeNotifier {
       Iterable<Group> groups,
       Leniency fixedMemberLeniency,
       Leniency fixedGroupLeniency,
+      Leniency excludedMemberLeniency,
+      Leniency excludedGroupLeniency,
       Leniency maximumAvailableLeniency) {
     Iterable<Vacancy> vacancies =
         member.vacancyIds.map<Vacancy>((vacancyId) => getVacancy(vacancyId));
@@ -672,6 +687,22 @@ class DataController extends ChangeNotifier {
         return absolutely;
       } else if (fixedGroupLeniency == Leniency.recommend) {
         return 1.5;
+      }
+    }
+    if (work.excludedMemberIds.contains(member.id)) {
+      if (excludedMemberLeniency == Leniency.force) {
+        return notAvailable;
+      } else if (excludedMemberLeniency == Leniency.recommend) {
+        return 0.5;
+      }
+    }
+    if (work.excludedGroupIds
+        .map((groupId) => getGroup(groupId))
+        .any((group) => group.memberIds.contains(member.id))) {
+      if (excludedGroupLeniency == Leniency.force) {
+        return notAvailable;
+      } else if (excludedGroupLeniency == Leniency.recommend) {
+        return 0.5;
       }
     }
     return 1;

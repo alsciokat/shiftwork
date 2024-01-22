@@ -381,6 +381,26 @@ class _EditPageState extends State<EditPage> {
               LeniencyFormField(
                   context: context,
                   label: AppLocalizations.of(context)!
+                      .excludedMemberLeniencyDefault,
+                  initialValue: shift.excludedMemberLeniency,
+                  onChanged: (value) {
+                    if (value != null) {
+                      shift.excludedMemberLeniency = value;
+                    }
+                  }),
+              LeniencyFormField(
+                  context: context,
+                  label: AppLocalizations.of(context)!
+                      .excludedGroupLeniencyDefault,
+                  initialValue: shift.excludedGroupLeniency,
+                  onChanged: (value) {
+                    if (value != null) {
+                      shift.excludedGroupLeniency = value;
+                    }
+                  }),
+              LeniencyFormField(
+                  context: context,
+                  label: AppLocalizations.of(context)!
                       .maximumAvailableLeniencyDefault,
                   initialValue: shift.maximumAvailableLeniency,
                   onChanged: (value) {

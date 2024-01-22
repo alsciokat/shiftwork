@@ -236,6 +236,8 @@ class Shift extends IObject {
   static List<String> workIdsDefault = [];
   static Leniency fixedMemberLeniencyDefault = Leniency.force;
   static Leniency fixedGroupLeniencyDefault = Leniency.recommend;
+  static Leniency excludedMemberLeniencyDefault = Leniency.force;
+  static Leniency excludedGroupLeniencyDefault = Leniency.recommend;
   static Leniency maximumAvailableLeniencyDefault = Leniency.force;
   static String descriptionDefault = "";
 
@@ -246,6 +248,8 @@ class Shift extends IObject {
 
   Leniency fixedMemberLeniency;
   Leniency fixedGroupLeniency;
+  Leniency excludedMemberLeniency;
+  Leniency excludedGroupLeniency;
   Leniency maximumAvailableLeniency;
   bool shuffleMembers;
   String description;
@@ -259,6 +263,8 @@ class Shift extends IObject {
       List<String>? workIds,
       Leniency? fixedMemberLeniency,
       Leniency? fixedGroupLeniency,
+      Leniency? excludedMemberLeniency,
+      Leniency? excludedGroupLeniency,
       Leniency? maximumAvailableLeniency,
       bool? shuffleMembers,
       String? description})
@@ -266,8 +272,12 @@ class Shift extends IObject {
         memberIds = memberIds ?? List.from(memberIdsDefault),
         groupIds = groupIds ?? List.from(groupIdsDefault),
         workIds = workIds ?? List.from(workIdsDefault),
-        fixedMemberLeniency = fixedMemberLeniency ?? fixedGroupLeniencyDefault,
+        fixedMemberLeniency = fixedMemberLeniency ?? fixedMemberLeniencyDefault,
         fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
+        excludedMemberLeniency =
+            excludedMemberLeniency ?? excludedMemberLeniencyDefault,
+        excludedGroupLeniency =
+            excludedGroupLeniency ?? excludedGroupLeniencyDefault,
         maximumAvailableLeniency =
             maximumAvailableLeniency ?? maximumAvailableLeniencyDefault,
         shuffleMembers = shuffleMembers ?? true,
@@ -287,6 +297,12 @@ class Shift extends IObject {
         Leniency.values[shiftJson['fixedMemberLeniency']];
     fixedGroupLeniencyDefault =
         Leniency.values[shiftJson['fixedGroupLeniency']];
+    excludedMemberLeniencyDefault = Leniency.values[
+        shiftJson['excludedMemberLeniency'] ??
+            excludedMemberLeniencyDefault.index];
+    excludedGroupLeniencyDefault = Leniency.values[
+        shiftJson['excludedGroupLeniency'] ??
+            excludedGroupLeniencyDefault.index];
     maximumAvailableLeniencyDefault =
         Leniency.values[shiftJson['maximumAvailableLeniency']];
     descriptionDefault = shiftJson['description'];
@@ -304,6 +320,12 @@ class Shift extends IObject {
           fixedMemberLeniencyDefault.index],
       fixedGroupLeniency: Leniency.values[
           objectJson['fixedGroupLeniency'] ?? fixedGroupLeniencyDefault.index],
+      excludedMemberLeniency: Leniency.values[
+          objectJson['excludedMemberLeniency'] ??
+              excludedMemberLeniencyDefault.index],
+      excludedGroupLeniency: Leniency.values[
+          objectJson['excludedGroupLeniency'] ??
+              excludedGroupLeniencyDefault.index],
       maximumAvailableLeniency: Leniency.values[
           objectJson['maximumAvailableLeniency'] ??
               maximumAvailableLeniencyDefault.index],
@@ -322,6 +344,8 @@ class Shift extends IObject {
         'workIds': workIds,
         'fixedMemberLeniency': fixedMemberLeniency.index,
         'fixedGroupLeniency': fixedGroupLeniency.index,
+        'excludedMemberLeniency': excludedMemberLeniency.index,
+        'excludedGroupLeniency': excludedGroupLeniency.index,
         'maximumAvailableLeniency': maximumAvailableLeniency.index,
         'shuffleMembers': shuffleMembers,
         'description': description,
@@ -350,7 +374,6 @@ class Member extends IObject {
 
   double previousTotalLoad = 0;
   double previousLoad = 0;
-  DateTime previousLoadEndDateTime = DateTime(0);
 
   double availablity = 1;
   List<DateTimeInterval> assignedIntervals = [];
@@ -382,16 +405,25 @@ class Member extends IObject {
         throw ShiftWorkError(
             '@param workStartTime is required when GetLoadScheme.fatigue is used in getLoad method');
       }
+      DateTime previousLoadEndDateTime =
+          assignedIntervals.fold(DateTime(0), (dateTime, interval) {
+        if (interval.end.isAfter(workStartDateTime)) {
+          return dateTime;
+        } else if (interval.end.isAfter(dateTime)) {
+          return interval.end;
+        } else {
+          return dateTime;
+        }
+      });
       return _calculateLoad(
           workStartDateTime.difference(previousLoadEndDateTime));
     }
     throw ShiftWorkError('$scheme is not implemented');
   }
 
-  void addLoad(double load, {DateTime? at}) {
+  void addLoad(double load) {
     previousTotalLoad += previousLoad;
     previousLoad = load;
-    previousLoadEndDateTime = at ?? previousLoadEndDateTime;
   }
 
   double _calculateLoad(Duration duration) {
@@ -525,6 +557,10 @@ class Work extends IObject {
   static Leniency fixedMemberLeniencyDefault = Leniency.inherit;
   static List<String> fixedGroupIdsDefault = [];
   static Leniency fixedGroupLeniencyDefault = Leniency.inherit;
+  static List<String> excludedMemberIdsDefault = [];
+  static Leniency excludedMemberLeniencyDefault = Leniency.inherit;
+  static List<String> excludedGroupIdsDefault = [];
+  static Leniency excludedGroupLeniencyDefault = Leniency.inherit;
   static List<String> memberIdsDefault = [];
   static bool allowOverlapDefault = false;
   static bool repeatWithSameMembersDefault = false;
@@ -556,6 +592,11 @@ class Work extends IObject {
   List<String> fixedGroupIds;
   Leniency fixedGroupLeniency;
 
+  List<String> excludedMemberIds;
+  Leniency excludedMemberLeniency;
+  List<String> excludedGroupIds;
+  Leniency excludedGroupLeniency;
+
   List<String> memberIds;
   bool allowOverlap;
   String description;
@@ -576,6 +617,10 @@ class Work extends IObject {
       Leniency? fixedMemberLeniency,
       List<String>? fixedGroupIds,
       Leniency? fixedGroupLeniency,
+      List<String>? excludedMemberIds,
+      Leniency? excludedMemberLeniency,
+      List<String>? excludedGroupIds,
+      Leniency? excludedGroupLeniency,
       List<String>? memberIds,
       bool? allowOverlap,
       String? description = "",
@@ -593,6 +638,14 @@ class Work extends IObject {
         fixedMemberLeniency = fixedMemberLeniency ?? fixedMemberLeniencyDefault,
         fixedGroupIds = fixedGroupIds ?? List.from(fixedGroupIdsDefault),
         fixedGroupLeniency = fixedGroupLeniency ?? fixedGroupLeniencyDefault,
+        excludedMemberIds =
+            excludedMemberIds ?? List.from(excludedMemberIdsDefault),
+        excludedMemberLeniency =
+            excludedMemberLeniency ?? excludedMemberLeniencyDefault,
+        excludedGroupIds =
+            excludedGroupIds ?? List.from(excludedGroupIdsDefault),
+        excludedGroupLeniency =
+            excludedGroupLeniency ?? excludedGroupLeniencyDefault,
         memberIds = memberIds ?? List.from(memberIdsDefault),
         allowOverlap = allowOverlap ?? allowOverlapDefault,
         description = description ?? descriptionDefault,
@@ -631,6 +684,16 @@ class Work extends IObject {
         Leniency.values[workJson['fixedMemberLeniency']];
     fixedGroupIdsDefault = List<String>.from(workJson['fixedGroupIds']);
     fixedGroupLeniencyDefault = Leniency.values[workJson['fixedGroupLeniency']];
+    excludedMemberIdsDefault = List<String>.from(
+        workJson['excludedMemberIds'] ?? excludedMemberIdsDefault);
+    excludedMemberLeniencyDefault = Leniency.values[
+        workJson['excludedMemberLeniency'] ??
+            excludedMemberLeniencyDefault.index];
+    excludedGroupIdsDefault = List<String>.from(
+        workJson['excludedGroupIds'] ?? excludedGroupIdsDefault);
+    excludedGroupLeniencyDefault = Leniency.values[
+        workJson['excludedGroupLeniency'] ??
+            excludedGroupLeniencyDefault.index];
     memberIdsDefault = List<String>.from(workJson['memberIds']);
     allowOverlapDefault = workJson['allowOverlap'] ?? allowOverlapDefault;
     repeatWithSameMembersDefault =
@@ -650,13 +713,22 @@ class Work extends IObject {
         endDateTime: DateTime.parse(objectJson['endDateTime']),
         fixedMemberIds: List<String>.from(
             objectJson['fixedMemberIds'] ?? fixedMemberIdsDefault),
-        fixedMemberLeniency: Leniency.values[
-            objectJson['fixedMemberLeniency'] ??
-                fixedMemberLeniencyDefault.index],
+        fixedMemberLeniency: Leniency.values[objectJson['fixedMemberLeniency'] ??
+            fixedMemberLeniencyDefault.index],
         fixedGroupIds: List<String>.from(
             objectJson['fixedGroupIds'] ?? fixedGroupIdsDefault),
         fixedGroupLeniency: Leniency.values[objectJson['fixedGroupLeniency'] ??
             fixedGroupLeniencyDefault.index],
+        excludedMemberIds: List<String>.from(
+            objectJson['excludedMemberIds'] ?? excludedMemberIdsDefault),
+        excludedMemberLeniency: Leniency.values[
+            objectJson['excludedMemberLeniency'] ??
+                excludedMemberLeniencyDefault.index],
+        excludedGroupIds: List<String>.from(
+            objectJson['excludedGroupIds'] ?? excludedGroupIdsDefault),
+        excludedGroupLeniency: Leniency.values[
+            objectJson['excludedGroupLeniency'] ??
+                excludedGroupLeniencyDefault.index],
         memberIds:
             List<String>.from(objectJson['memberIds'] ?? memberIdsDefault),
         allowOverlap: objectJson['allowOverlap'] ?? allowOverlapDefault,
@@ -664,8 +736,8 @@ class Work extends IObject {
         repeatOn: List.from(objectJson['repeatOn']),
         endRepeatOn: DateTime.parse(objectJson['endRepeatOn']),
         repeatWithSameMembers: objectJson['repeatWithSameMembers'],
-        repeatedWorks: List.from(objectJson['repeatedWorks']
-            ?.map((workJson) => fromJson(genId(), workJson))));
+        repeatedWorks: List.from(
+            objectJson['repeatedWorks']?.map((workJson) => fromJson(genId(), workJson))));
   }
 
   @override
@@ -679,6 +751,10 @@ class Work extends IObject {
         'fixedMemberLeniency': fixedMemberLeniency.index,
         'fixedGroupIds': fixedGroupIds,
         'fixedGroupLeniency': fixedGroupLeniency.index,
+        'excludedMemberIds': excludedMemberIds,
+        'excludedMemberLeniency': excludedMemberLeniency.index,
+        'excludedGroupIds': excludedGroupIds,
+        'excludedGroupLeniency': excludedGroupLeniency.index,
         'memberIds': memberIds,
         'allowOverlap': allowOverlap,
         'description': description,
