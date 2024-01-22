@@ -5,6 +5,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import 'core.dart';
 
 // Deals with the direct access to the storage file
@@ -330,12 +332,13 @@ class DataController extends ChangeNotifier {
   //   return this;
   // }
 
-  DataController generateShift(String shiftId) {
+  DataController generateShift(String shiftId,
+      {required AppLocalizations l10n}) {
     final Shift shift = getShift(shiftId);
-    Leniency gFixedMemberLeniency;
-    int efml = 1;
-    Leniency gFixedGroupLeniency;
-    int efgl = 0;
+    Leniency gFixedMemberLeniency = shift.fixedGroupLeniency;
+    // int efml = 1;
+    Leniency gFixedGroupLeniency = shift.fixedGroupLeniency;
+    // int efgl = 0;
     Leniency gMaximumAvailableLeniency = shift.maximumAvailableLeniency;
     List<Work> worksLeft = [];
 
@@ -354,7 +357,7 @@ class DataController extends ChangeNotifier {
             Work repeatedWork = Work(
                 id: genId(),
                 name: work.name,
-                description: 'Repeated',
+                description: l10n.repeated,
                 load: work.load,
                 numberOfMembersNeeded: work.numberOfMembersNeeded,
                 startDateTime: date.copyWith(
@@ -370,10 +373,14 @@ class DataController extends ChangeNotifier {
                 fixedGroupIds: work.fixedGroupIds,
                 fixedGroupLeniency: work.fixedGroupLeniency,
                 memberIds: [],
-                allowOverlap: work.allowOverlap);
+                allowOverlap: work.allowOverlap,
+                repeatedWorks: List.empty(),
+                repeatWithSameMembers: false);
 
             work.repeatedWorks.add(repeatedWork);
-            worksLeft.add(repeatedWork);
+            if (!work.repeatWithSameMembers) {
+              worksLeft.add(repeatedWork);
+            }
           }
         }
       }
@@ -394,44 +401,53 @@ class DataController extends ChangeNotifier {
     // Main Loop
     while (worksLeft.isNotEmpty) {
       nextWork = _getNextWork(worksLeft);
+      if (nextWork.fixedMemberLeniency != Leniency.inherit) {
+        gFixedMemberLeniency = nextWork.fixedMemberLeniency;
+      }
+      if (nextWork.fixedGroupLeniency != Leniency.inherit) {
+        gFixedGroupLeniency = nextWork.fixedGroupLeniency;
+      }
 
       // Get the list of available members by iterating over all possible configurations.
-      for (int i = 0; i < 4; i++) {
-        if (i & (1 << efml) == (1 << efml)) {
-          if (nextWork.fixedMemberLeniency == Leniency.force ||
-              (nextWork.fixedMemberLeniency == Leniency.inherit &&
-                  shift.fixedMemberLeniency == Leniency.force)) {
-            continue;
-          }
-          gFixedMemberLeniency = Leniency.recommend;
-        } else {
-          gFixedMemberLeniency = Leniency.force;
-        }
-        if (i & (1 << efgl) == (1 << efgl)) {
-          if (nextWork.fixedGroupLeniency == Leniency.force ||
-              (nextWork.fixedGroupLeniency == Leniency.inherit &&
-                  shift.fixedGroupLeniency == Leniency.force)) {
-            continue;
-          }
-          gFixedGroupLeniency = Leniency.recommend;
-        } else {
-          gFixedGroupLeniency = Leniency.force;
-        }
+      // for (int i = 0; i < 4; i++) {
+      //   if (i & (1 << efml) == (1 << efml)) {
+      //     if (nextWork.fixedMemberLeniency == Leniency.force ||
+      //         (nextWork.fixedMemberLeniency == Leniency.inherit &&
+      //             shift.fixedMemberLeniency == Leniency.force)) {
+      //       continue;
+      //     }
+      //     gFixedMemberLeniency = Leniency.recommend;
+      //   } else {
+      //     gFixedMemberLeniency = Leniency.force;
+      //   }
+      //   if (i & (1 << efgl) == (1 << efgl)) {
+      //     if (nextWork.fixedGroupLeniency == Leniency.force ||
+      //         (nextWork.fixedGroupLeniency == Leniency.inherit &&
+      //             shift.fixedGroupLeniency == Leniency.force)) {
+      //       continue;
+      //     }
+      //     gFixedGroupLeniency = Leniency.recommend;
+      //   } else {
+      //     gFixedGroupLeniency = Leniency.force;
+      //   }
 
-        for (Member member in members) {
-          member.availablity = _calculateAvailablity(
-              member, nextWork, gFixedMemberLeniency, gFixedGroupLeniency);
-        }
-        if (members
-                .where((member) => member.availablity > notAvailable)
-                .length >=
-            nextWork.numberOfMembersNeeded) {
-          break;
-        }
+      for (Member member in members) {
+        member.availablity = _calculateAvailablity(
+            member,
+            nextWork,
+            groups,
+            gFixedMemberLeniency,
+            gFixedGroupLeniency,
+            gMaximumAvailableLeniency);
       }
+      //   if (members.where((member) => member.availablity > notAvailable).length >=
+      //       nextWork.numberOfMembersNeeded) {
+      //     break;
+      //   }
+      // }
       if (members.where((member) => member.availablity > notAvailable).length <
           nextWork.numberOfMembersNeeded) {
-        throw ShiftWorkError('Not enough member for ${nextWork.name}');
+        throw ShiftWorkError(l10n.notEnoughMembersFor(nextWork.name));
       }
       // Calculate availableNow
       for (Group group in groups) {
@@ -444,8 +460,8 @@ class DataController extends ChangeNotifier {
           Iterable<Member> groupMembers =
               members.where((member) => group.memberIds.contains(member.id));
           for (Member groupMember in groupMembers) {
-            if (groupMember.assignedIntervals.any(
-                (interval) => interval.intersect(nextWork.dateTimeInterval))) {
+            if (groupMember.assignedIntervals.any((interval) =>
+                nextWork.getIntervals().any((e) => e.intersect(interval)))) {
               group.availableNow -= 1;
             }
           }
@@ -465,15 +481,15 @@ class DataController extends ChangeNotifier {
             gMaximumAvailableLeniency);
 
         if (maybeNextMember == null) {
-          throw ShiftWorkError("Not enough members for ${nextWork.name}.");
+          throw ShiftWorkError(l10n.notEnoughMembersFor(nextWork.name));
         }
         nextMember = maybeNextMember;
 
         // Assign
         nextWork.memberIds.add(nextMember.id);
-        nextMember.addLoad(nextWork.load, at: nextWork.endDateTime);
+        nextMember.addLoad(nextWork.getLoad(), at: nextWork.endDateTime);
         if (!nextWork.allowOverlap) {
-          nextMember.assignedIntervals.add(nextWork.dateTimeInterval);
+          nextMember.assignedIntervals.addAll(nextWork.getIntervals());
         }
         nextMember.availablity = notAvailable;
       }
@@ -498,7 +514,7 @@ class DataController extends ChangeNotifier {
     }
     if (scheme == GetNextWorkScheme.getHighestLoad) {
       return works.reduce((work1, work2) {
-        if (work1.load >= work2.load) {
+        if (work1.getLoad() >= work2.getLoad()) {
           return work1;
         }
         return work2;
@@ -506,7 +522,7 @@ class DataController extends ChangeNotifier {
     }
     if (scheme == GetNextWorkScheme.getLowestLoad) {
       return works.reduce((work1, work2) {
-        if (work1.load <= work2.load) {
+        if (work1.getLoad() <= work2.getLoad()) {
           return work1;
         }
         return work2;
@@ -516,7 +532,7 @@ class DataController extends ChangeNotifier {
       return works.reduce((work1, work2) {
         if (work1.startDateTime.isBefore(work2.startDateTime) ||
             (work1.startDateTime.isAtSameMomentAs(work2.startDateTime) &&
-                work1.load >= work2.load)) {
+                work1.getLoad() >= work2.getLoad())) {
           return work1;
         }
         return work2;
@@ -547,7 +563,9 @@ class DataController extends ChangeNotifier {
                     gMaximumAvailableLeniency == Leniency.force)) {
               candidate.availablity = notAvailable;
             } else {
-              candidate.availablity = 0.5;
+              if (candidate.availablity > notAvailable) {
+                candidate.availablity = 0.5;
+              }
             }
             continue new_candidate;
           }
@@ -562,7 +580,9 @@ class DataController extends ChangeNotifier {
                       gMaximumAvailableLeniency == Leniency.force)) {
                 member.availablity = notAvailable;
               } else {
-                member.availablity = 0.5;
+                if (candidate.availablity > notAvailable) {
+                  candidate.availablity = 0.5;
+                }
               }
             }
           }
@@ -607,20 +627,35 @@ class DataController extends ChangeNotifier {
   final double notAvailable = 0.0001;
   final double absolutely = 10000;
 
-  double _calculateAvailablity(Member member, Work work,
-      Leniency fixedMemberLeniency, Leniency fixedGroupLeniency) {
+  double _calculateAvailablity(
+      Member member,
+      Work work,
+      Iterable<Group> groups,
+      Leniency fixedMemberLeniency,
+      Leniency fixedGroupLeniency,
+      Leniency maximumAvailableLeniency) {
     Iterable<Vacancy> vacancies =
         member.vacancyIds.map<Vacancy>((vacancyId) => getVacancy(vacancyId));
-    for (final vacancy in vacancies) {
-      if (vacancy.dateTimeInterval.intersect(work.dateTimeInterval)) {
+    if (vacancies.any((vacancy) => work.getIntervals().any(
+          (e) => e.intersect(vacancy.dateTimeInterval),
+        ))) {
+      return notAvailable;
+    }
+    if (!work.allowOverlap) {
+      if (member.assignedIntervals
+          .any((ai) => work.getIntervals().any((wi) => ai.intersect(wi)))) {
         return notAvailable;
       }
     }
-    if (!work.allowOverlap) {
-      for (final dateTimeInterval in member.assignedIntervals) {
-        if (dateTimeInterval.intersect(work.dateTimeInterval)) {
+    for (final group in groups) {
+      if (group.memberIds.contains(member.id) &&
+          (group.maximumAvailable == 0 || group.maximumAvailable < -1)) {
+        if (group.maximumAvailableLeniency == Leniency.force ||
+            (group.maximumAvailableLeniency == Leniency.inherit &&
+                maximumAvailableLeniency == Leniency.force)) {
           return notAvailable;
         }
+        return 0.5;
       }
     }
     if (work.fixedMemberIds.contains(member.id)) {
@@ -630,14 +665,13 @@ class DataController extends ChangeNotifier {
         return 1.5;
       }
     }
-    for (final group
-        in work.fixedGroupIds.map<Group>((groupId) => getGroup(groupId))) {
-      if (group.memberIds.contains(member.id)) {
-        if (fixedGroupLeniency == Leniency.force) {
-          return absolutely;
-        } else if (fixedGroupLeniency == Leniency.recommend) {
-          return 1.5;
-        }
+    if (work.fixedGroupIds
+        .map((groupId) => getGroup(groupId))
+        .any((group) => group.memberIds.contains(member.id))) {
+      if (fixedGroupLeniency == Leniency.force) {
+        return absolutely;
+      } else if (fixedGroupLeniency == Leniency.recommend) {
+        return 1.5;
       }
     }
     return 1;

@@ -95,7 +95,8 @@ class _ShowPageState extends State<ShowPage> {
     if (loading) {
       () async {
         try {
-          dataController.generateShift(widget.shiftId);
+          dataController.generateShift(widget.shiftId,
+              l10n: AppLocalizations.of(context)!);
           shift.created = true;
           dataController.flush();
           return null;
@@ -122,6 +123,9 @@ class _ShowPageState extends State<ShowPage> {
     for (Work work in shift.workIds.map((id) => dataController.getWork(id))) {
       works.add(work);
       for (Work repeatedWork in work.repeatedWorks) {
+        if (work.repeatWithSameMembers) {
+          repeatedWork.memberIds = work.memberIds;
+        }
         works.add(repeatedWork);
       }
     }

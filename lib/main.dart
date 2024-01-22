@@ -13,10 +13,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   unawaited(MobileAds.instance.initialize());
   unawaited(initializeDateFormatting('ko_KR', null));
-  runApp(ChangeNotifierProvider(
-    create: (context) => DataController(),
-    child: const ShiftWork(),
-  ));
+  runApp(
+    const ShiftWork(),
+  );
 }
 
 class ShiftWork extends StatelessWidget {
@@ -24,15 +23,18 @@ class ShiftWork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ShiftWork',
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color.fromARGB(255, 72, 166, 252),
+    return ChangeNotifierProvider(
+      create: (context) => DataController(),
+      child: MaterialApp(
+        title: 'ShiftWork',
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorSchemeSeed: const Color.fromARGB(255, 72, 166, 252),
+        ),
+        home: const HomePage(),
       ),
-      home: const HomePage(),
     );
   }
 }

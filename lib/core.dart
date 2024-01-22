@@ -527,6 +527,7 @@ class Work extends IObject {
   static Leniency fixedGroupLeniencyDefault = Leniency.inherit;
   static List<String> memberIdsDefault = [];
   static bool allowOverlapDefault = false;
+  static bool repeatWithSameMembersDefault = false;
   static String descriptionDefault = "";
 
   String name;
@@ -561,6 +562,7 @@ class Work extends IObject {
 
   List<bool> repeatOn;
   DateTime endRepeatOn;
+  bool repeatWithSameMembers;
   List<Work> repeatedWorks;
 
   Work(
@@ -579,6 +581,7 @@ class Work extends IObject {
       String? description = "",
       List<bool>? repeatOn,
       DateTime? endRepeatOn,
+      bool? repeatWithSameMembers,
       List<Work>? repeatedWorks})
       : name = name ?? nameDefault,
         load = load ?? loadDefault,
@@ -595,11 +598,28 @@ class Work extends IObject {
         description = description ?? descriptionDefault,
         repeatOn = repeatOn ?? List.filled(7, false),
         endRepeatOn = endRepeatOn ?? DateTime.now(),
+        repeatWithSameMembers =
+            repeatWithSameMembers ?? repeatWithSameMembersDefault,
         repeatedWorks = repeatedWorks ?? List<Work>.empty(growable: true);
 
   @override
   Work create({required String id}) {
     return Work(id: id);
+  }
+
+  double getLoad() {
+    if (repeatWithSameMembers) {
+      return load * repeatedWorks.length;
+    }
+    return load;
+  }
+
+  List<DateTimeInterval> getIntervals() {
+    List<DateTimeInterval> intervals = [dateTimeInterval];
+    if (repeatWithSameMembers) {
+      intervals.addAll(repeatedWorks.map((e) => e.dateTimeInterval));
+    }
+    return intervals;
   }
 
   static setDefault(Map<String, dynamic> workJson) {
@@ -613,6 +633,8 @@ class Work extends IObject {
     fixedGroupLeniencyDefault = Leniency.values[workJson['fixedGroupLeniency']];
     memberIdsDefault = List<String>.from(workJson['memberIds']);
     allowOverlapDefault = workJson['allowOverlap'] ?? allowOverlapDefault;
+    repeatWithSameMembersDefault =
+        workJson['repeatWithSameMembers'] ?? repeatWithSameMembersDefault;
     descriptionDefault = workJson['description'];
   }
 
@@ -641,6 +663,7 @@ class Work extends IObject {
         description: objectJson['description'] ?? descriptionDefault,
         repeatOn: List.from(objectJson['repeatOn']),
         endRepeatOn: DateTime.parse(objectJson['endRepeatOn']),
+        repeatWithSameMembers: objectJson['repeatWithSameMembers'],
         repeatedWorks: List.from(objectJson['repeatedWorks']
             ?.map((workJson) => fromJson(genId(), workJson))));
   }
@@ -661,6 +684,7 @@ class Work extends IObject {
         'description': description,
         'repeatOn': repeatOn,
         'endRepeatOn': endRepeatOn.toString(),
+        'repeatWithSameMembers': repeatWithSameMembers,
         'repeatedWorks': repeatedWorks.map((work) => work.toJson()).toList(),
       };
 }

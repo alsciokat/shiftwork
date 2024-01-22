@@ -50,9 +50,26 @@ class _EditPageState extends State<EditPage> {
               onPressed: () {
                 DataController dataController =
                     Provider.of<DataController>(context, listen: false);
-                if (widget.shiftId ==
-                    dataController.data.shiftData.tempObject.id) {
+                Shift shift = dataController.getShift(widget.shiftId);
+                AppLocalizations l10n = AppLocalizations.of(context)!;
+                if (shift.id == dataController.data.shiftData.tempObject.id) {
                   dataController.saveTempShift();
+                }
+                if (shift.memberIds.isEmpty) {
+                  informUser(context,
+                      title: l10n.attention, content: l10n.pleaseAddMember);
+                  setState(() {
+                    currentPageIndex = 0;
+                  });
+                  return;
+                }
+                if (shift.workIds.isEmpty) {
+                  informUser(context,
+                      title: l10n.attention, content: l10n.pleaseAddWork);
+                  setState(() {
+                    currentPageIndex = 1;
+                  });
+                  return;
                 }
                 Future<Object?> error =
                     Navigator.of(context).push<Object?>(MaterialPageRoute(

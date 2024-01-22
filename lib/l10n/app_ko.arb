@@ -76,5 +76,10 @@
     "strict": "엄격",
     "select": "선택",
     "confirm": "결정",
-    "remove": "제거"
+    "remove": "제거",
+    "pleaseAddMember": "멤버가 존재하지 않습니다.\n먼저 멤버를 추가해 주세요.",
+    "pleaseAddWork": "작업이 존재하지 않습니다.\n먼저 작업을 추가해 주세요",
+    "notEnoughMembersFor": "{workName}(을)를 위한 멤버가 부족합니다.",
+    "repeated": "반복됨",
+    "repeatWithSameMembers": "같은 멤버로 반복"
 }
